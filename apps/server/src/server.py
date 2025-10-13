@@ -538,6 +538,45 @@ async def get_listing(
 
 
 @mcp.tool()
+async def get_listing_inventory(
+    listing_id: int,
+    show_deleted: bool = False
+) -> dict:
+    """
+    Get the full inventory matrix for a listing (products, offerings, property values).
+    
+    Args:
+        listing_id: The unique identifier of the listing.
+        show_deleted: Include deleted products/offerings.
+    
+    Returns:
+        Dictionary containing:
+        - success: Whether the request was successful
+        - inventory: Raw inventory payload from Etsy (products, offerings, *_on_property fields)
+    """
+    if etsy_client is None:
+        return {
+            "success": False,
+            "error": "Not connected to Etsy. Please use connect_etsy tool first."
+        }
+    
+    try:
+        inventory = await etsy_client.get_listing_inventory(
+            str(listing_id),
+            show_deleted=bool(show_deleted)
+        )
+        return {
+            "success": True,
+            "inventory": inventory
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Error retrieving listing inventory: {str(e)}"
+        }
+
+
+@mcp.tool()
 async def update_my_listing(
     listing_id: int,
     state: str = None,

@@ -201,6 +201,41 @@ class EtsyClient:
         response = await self.async_client.get(url, headers=self._get_headers(), params=params)
         response.raise_for_status()
         return response.json()
+
+    async def get_listing_inventory(
+        self,
+        listing_id: str,
+        show_deleted: bool = False,
+        includes: Optional[str] = None,
+        legacy: Optional[bool] = None,
+    ) -> Dict[str, Any]:
+        """
+        Retrieve the inventory record for a listing.
+
+        Args:
+            listing_id: The numeric ID of the listing.
+            show_deleted: Whether to include deleted products/offerings.
+            includes: Optional association to include (e.g., "Listing").
+            legacy: Optional flag for legacy processing fields.
+
+        Returns:
+            Dictionary containing the listing inventory.
+
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/listings/{listing_id}/inventory"
+        params: Dict[str, Any] = {}
+        if show_deleted:
+            params["show_deleted"] = True
+        if includes:
+            params["includes"] = includes
+        if legacy is not None:
+            params["legacy"] = bool(legacy)
+
+        response = await self.async_client.get(url, headers=self._get_headers(), params=params)
+        response.raise_for_status()
+        return response.json()
     
     async def update_listing(
         self, 
