@@ -363,7 +363,8 @@ async def get_my_listings(
     keywords: str = None,
     state: str = "active",
     limit: int = 25,
-    offset: int = 0
+    offset: int = 0,
+    allow_suggested_title: bool = True
 ) -> dict:
     """
     Get or search listings from your Etsy shop. This comprehensive tool handles all 
@@ -377,6 +378,8 @@ async def get_my_listings(
                'expired', 'sold_out'. Default is 'active'.
         limit: Number of results to return (1-100). Default is 25.
         offset: Offset for pagination. Default is 0.
+        allow_suggested_title: Include suggested titles if available (English shops only). 
+                                Default is True.
     
     Returns:
         Dictionary containing:
@@ -384,6 +387,7 @@ async def get_my_listings(
         - results: Array of listing objects with details like:
           - listing_id: Unique listing identifier
           - title: Listing title
+          - suggested_title: Suggested title (if available and enabled)
           - description: Listing description
           - price: Listing price
           - quantity: Available quantity
@@ -438,13 +442,15 @@ async def get_my_listings(
                 str(shop_id), 
                 keywords=keywords,
                 limit=limit,
-                offset=offset
+                offset=offset,
+                allow_suggested_title=allow_suggested_title
             )
             filters_applied = {
                 "state": "active",
                 "keywords": keywords,
                 "limit": limit,
-                "offset": offset
+                "offset": offset,
+                "allow_suggested_title": allow_suggested_title
             }
         else:
             # Use general listings endpoint (supports all states)
@@ -452,13 +458,15 @@ async def get_my_listings(
                 str(shop_id), 
                 state=state,
                 limit=limit,
-                offset=offset
+                offset=offset,
+                allow_suggested_title=allow_suggested_title
             )
             filters_applied = {
                 "state": state,
                 "keywords": None,
                 "limit": limit,
-                "offset": offset
+                "offset": offset,
+                "allow_suggested_title": allow_suggested_title
             }
         
         return {
@@ -471,6 +479,61 @@ async def get_my_listings(
         return {
             "success": False,
             "error": f"Error retrieving listings: {str(e)}"
+        }
+
+
+@mcp.tool()
+async def get_listing(
+    listing_id: int,
+    allow_suggested_title: bool = True
+) -> dict:
+    """
+    Get detailed information about a single listing by its ID.
+    
+    Args:
+        listing_id: The unique identifier of the listing
+        allow_suggested_title: Include suggested title if available (English shops only). 
+                                Default is True.
+    
+    Returns:
+        Dictionary containing:
+        - success: Whether the request was successful
+        - listing: Listing object with details including:
+          - listing_id: Unique listing identifier
+          - title: Listing title
+          - suggested_title: Suggested title (if available and enabled)
+          - description: Listing description
+          - price: Listing price
+          - quantity: Available quantity
+          - state: Current state (active, draft, etc.)
+          - url: Listing URL
+          - tags: Array of tags
+          - and more...
+    
+    Example:
+        - Get listing details: get_listing(listing_id=123456789)
+    """
+    if etsy_client is None:
+        return {
+            "success": False,
+            "error": "Not connected to Etsy. Please use connect_etsy tool first."
+        }
+    
+    try:
+        # Get the listing
+        listing_data = await etsy_client.get_listing(
+            str(listing_id),
+            allow_suggested_title=allow_suggested_title
+        )
+        
+        return {
+            "success": True,
+            "listing": listing_data
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Error retrieving listing: {str(e)}"
         }
 
 
@@ -729,6 +792,48 @@ async def assign_processing_profile_to_listing(
         return {"success": True, "listing": updated}
     except Exception as e:
         return {"success": False, "error": f"Error assigning processing profile to listing: {str(e)}"}
+
+
+@mcp.tool()
+async def get_shipping_profiles(limit: int = 25, offset: int = 0) -> dict:
+    """
+    List Shipping Profiles for your shop.
+    """
+    if etsy_client is None:
+        return {
+            "success": False,
+            "error": "Not connected to Etsy. Please use connect_etsy tool first."
+        }
+    try:
+        user_data = await etsy_client.get_current_user()
+        shop_id = user_data.get("shop_id")
+        if not shop_id:
+            return {"success": False, "error": "No shop_id found for this user."}
+        profiles = await etsy_client.get_shipping_profiles(str(shop_id), limit=limit, offset=offset)
+        return {"success": True, "results": profiles.get("results", []), "count": profiles.get("count", 0)}
+    except Exception as e:
+        return {"success": False, "error": f"Error listing shipping profiles: {str(e)}"}
+
+
+@mcp.tool()
+async def get_shipping_profile(shipping_profile_id: int) -> dict:
+    """
+    Get a single Shipping Profile by ID.
+    """
+    if etsy_client is None:
+        return {
+            "success": False,
+            "error": "Not connected to Etsy. Please use connect_etsy tool first."
+        }
+    try:
+        user_data = await etsy_client.get_current_user()
+        shop_id = user_data.get("shop_id")
+        if not shop_id:
+            return {"success": False, "error": "No shop_id found for this user."}
+        profile = await etsy_client.get_shipping_profile(str(shop_id), str(shipping_profile_id))
+        return {"success": True, "profile": profile}
+    except Exception as e:
+        return {"success": False, "error": f"Error getting shipping profile: {str(e)}"}
 
 @mcp.tool()
 async def delete_my_listing(listing_id: int) -> dict:

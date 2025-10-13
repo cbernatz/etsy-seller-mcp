@@ -104,7 +104,8 @@ class EtsyClient:
         shop_id: str, 
         state: Optional[str] = "active",
         limit: int = 25,
-        offset: int = 0
+        offset: int = 0,
+        allow_suggested_title: bool = True
     ) -> Dict[str, Any]:
         """
         Get listings for a shop.
@@ -115,6 +116,7 @@ class EtsyClient:
                    'expired', 'sold_out'. Default is 'active'.
             limit: Number of results to return (max 100). Default is 25.
             offset: Offset for pagination. Default is 0.
+            allow_suggested_title: Include suggested titles if available. Default is True.
         
         Returns:
             Dictionary containing listings array and pagination info.
@@ -125,7 +127,8 @@ class EtsyClient:
         url = f"{self.BASE_URL}/application/shops/{shop_id}/listings"
         params = {
             "limit": limit,
-            "offset": offset
+            "offset": offset,
+            "allow_suggested_title": allow_suggested_title
         }
         if state:
             params["state"] = state
@@ -139,7 +142,8 @@ class EtsyClient:
         shop_id: str, 
         keywords: Optional[str] = None,
         limit: int = 25,
-        offset: int = 0
+        offset: int = 0,
+        allow_suggested_title: bool = True
     ) -> Dict[str, Any]:
         """
         Search active listings in a shop by keywords.
@@ -150,6 +154,7 @@ class EtsyClient:
                       returns all active listings.
             limit: Number of results to return (max 100). Default is 25.
             offset: Offset for pagination. Default is 0.
+            allow_suggested_title: Include suggested titles if available. Default is True.
         
         Returns:
             Dictionary containing listings array and pagination info.
@@ -160,10 +165,38 @@ class EtsyClient:
         url = f"{self.BASE_URL}/application/shops/{shop_id}/listings/active"
         params = {
             "limit": limit,
-            "offset": offset
+            "offset": offset,
+            "allow_suggested_title": allow_suggested_title
         }
         if keywords:
             params["keywords"] = keywords
+        
+        response = await self.async_client.get(url, headers=self._get_headers(), params=params)
+        response.raise_for_status()
+        return response.json()
+    
+    async def get_listing(
+        self,
+        listing_id: str,
+        allow_suggested_title: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Get a single listing by its ID.
+        
+        Args:
+            listing_id: The numeric ID of the listing.
+            allow_suggested_title: Include suggested title if available. Default is True.
+        
+        Returns:
+            Dictionary containing the listing information.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/listings/{listing_id}"
+        params = {
+            "allow_suggested_title": allow_suggested_title
+        }
         
         response = await self.async_client.get(url, headers=self._get_headers(), params=params)
         response.raise_for_status()
@@ -322,6 +355,39 @@ class EtsyClient:
         if response.text:
             return response.json()
         return {"deleted": True, "readiness_state_definition_id": readiness_state_definition_id}
+
+    async def get_shipping_profiles(
+        self,
+        shop_id: str,
+        limit: int = 25,
+        offset: int = 0
+    ) -> Dict[str, Any]:
+        """
+        Retrieve shipping profiles for a shop.
+        """
+        url = f"{self.BASE_URL}/application/shops/{shop_id}/shipping-profiles"
+        params = {
+            "limit": limit,
+            "offset": offset,
+        }
+        response = await self.async_client.get(url, headers=self._get_headers(), params=params)
+        response.raise_for_status()
+        return response.json()
+
+    async def get_shipping_profile(
+        self,
+        shop_id: str,
+        shipping_profile_id: str,
+    ) -> Dict[str, Any]:
+        """
+        Retrieve a single shipping profile by ID.
+        """
+        url = (
+            f"{self.BASE_URL}/application/shops/{shop_id}/shipping-profiles/{shipping_profile_id}"
+        )
+        response = await self.async_client.get(url, headers=self._get_headers())
+        response.raise_for_status()
+        return response.json()
     
     async def delete_listing(self, listing_id: str) -> Dict[str, Any]:
         """
