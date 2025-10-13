@@ -410,6 +410,125 @@ class EtsyClient:
             return response.json()
         return {"deleted": True, "listing_id": listing_id}
     
+    async def get_shop_sections(self, shop_id: str) -> Dict[str, Any]:
+        """
+        Retrieve the list of shop sections in a specific shop.
+        
+        Args:
+            shop_id: The unique identifier for the shop.
+        
+        Returns:
+            Dictionary containing shop sections array.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/shops/{shop_id}/sections"
+        response = await self.async_client.get(url, headers=self._get_headers())
+        response.raise_for_status()
+        return response.json()
+    
+    async def get_shop_section(self, shop_id: str, shop_section_id: str) -> Dict[str, Any]:
+        """
+        Retrieve a single shop section by ID.
+        
+        Args:
+            shop_id: The unique identifier for the shop.
+            shop_section_id: The numeric ID of the section.
+        
+        Returns:
+            Dictionary containing the shop section details.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/shops/{shop_id}/sections/{shop_section_id}"
+        response = await self.async_client.get(url, headers=self._get_headers())
+        response.raise_for_status()
+        return response.json()
+    
+    async def create_shop_section(self, shop_id: str, title: str) -> Dict[str, Any]:
+        """
+        Create a new section in a specific shop.
+        
+        Args:
+            shop_id: The unique identifier for the shop.
+            title: The title string for the shop section.
+        
+        Returns:
+            Dictionary containing the created shop section.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/shops/{shop_id}/sections"
+        headers = {
+            "x-api-key": self.api_key,
+            "Authorization": f"Bearer {self.access_token}",
+            "Content-Type": "application/x-www-form-urlencoded",
+        }
+        data = {"title": title}
+        response = await self.async_client.post(url, headers=headers, data=data)
+        response.raise_for_status()
+        return response.json()
+    
+    async def update_shop_section(
+        self, 
+        shop_id: str, 
+        shop_section_id: str, 
+        title: str
+    ) -> Dict[str, Any]:
+        """
+        Update a section in a specific shop.
+        
+        Args:
+            shop_id: The unique identifier for the shop.
+            shop_section_id: The numeric ID of the section to update.
+            title: The new title string for the shop section.
+        
+        Returns:
+            Dictionary containing the updated shop section.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/shops/{shop_id}/sections/{shop_section_id}"
+        headers = {
+            "x-api-key": self.api_key,
+            "Authorization": f"Bearer {self.access_token}",
+            "Content-Type": "application/x-www-form-urlencoded",
+        }
+        data = {"title": title}
+        response = await self.async_client.put(url, headers=headers, data=data)
+        response.raise_for_status()
+        return response.json()
+    
+    async def delete_shop_section(
+        self, 
+        shop_id: str, 
+        shop_section_id: str
+    ) -> Dict[str, Any]:
+        """
+        Delete a section in a specific shop.
+        
+        Args:
+            shop_id: The unique identifier for the shop.
+            shop_section_id: The numeric ID of the section to delete.
+        
+        Returns:
+            Dictionary confirming the deletion.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/shops/{shop_id}/sections/{shop_section_id}"
+        response = await self.async_client.delete(url, headers=self._get_headers())
+        response.raise_for_status()
+        # DELETE typically returns empty response (204)
+        if response.text:
+            return response.json()
+        return {"deleted": True, "shop_section_id": shop_section_id}
+    
     async def close(self):
         """Close the HTTP clients."""
         self.client.close()
