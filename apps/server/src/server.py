@@ -1177,6 +1177,161 @@ async def delete_shop_section(shop_section_id: int) -> dict:
         }
 
 
+@mcp.tool()
+async def get_reviews_by_listing(
+    listing_id: int,
+    limit: int = 25,
+    offset: int = 0,
+    min_created: int = None,
+    max_created: int = None
+) -> dict:
+    """
+    Get reviews for a specific listing.
+    
+    Reviews provide valuable feedback from buyers about their purchase experience.
+    This endpoint retrieves transaction reviews associated with a particular listing.
+    
+    Args:
+        listing_id: The numeric ID of the listing
+        limit: Number of results to return (1-100). Default is 25.
+        offset: Offset for pagination. Default is 0.
+        min_created: The earliest unix timestamp for when a review was created (optional)
+        max_created: The latest unix timestamp for when a review was created (optional)
+    
+    Returns:
+        Dictionary containing:
+        - success: Whether the request was successful
+        - count: Total number of reviews
+        - results: Array of review objects with details like:
+          - rating: Review rating
+          - review: Review text
+          - language: Language code
+          - buyer_user_id: ID of the buyer who left the review
+          - create_timestamp: When the review was created
+          - created_timestamp: When the review was created
+          - update_timestamp: When the review was last updated
+          - updated_timestamp: When the review was last updated
+    
+    Example:
+        - Get all reviews: get_reviews_by_listing(listing_id=123456789)
+        - Get recent reviews: get_reviews_by_listing(listing_id=123456789, min_created=1609459200)
+    """
+    if etsy_client is None:
+        return {
+            "success": False,
+            "error": "Not connected to Etsy. Please use connect_etsy tool first."
+        }
+    
+    try:
+        # Validate limit
+        if limit < 1 or limit > 100:
+            return {
+                "success": False,
+                "error": "Limit must be between 1 and 100."
+            }
+        
+        reviews_data = await etsy_client.get_reviews_by_listing(
+            str(listing_id),
+            limit=limit,
+            offset=offset,
+            min_created=min_created,
+            max_created=max_created
+        )
+        
+        return {
+            "success": True,
+            "count": reviews_data.get("count", 0),
+            "results": reviews_data.get("results", [])
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Error retrieving reviews for listing: {str(e)}"
+        }
+
+
+@mcp.tool()
+async def get_reviews_by_shop(
+    limit: int = 25,
+    offset: int = 0,
+    min_created: int = None,
+    max_created: int = None
+) -> dict:
+    """
+    Get all reviews for your Etsy shop.
+    
+    Reviews provide valuable feedback from buyers about their purchase experience.
+    This endpoint retrieves all transaction reviews across all listings in your shop.
+    
+    Args:
+        limit: Number of results to return (1-100). Default is 25.
+        offset: Offset for pagination. Default is 0.
+        min_created: The earliest unix timestamp for when a review was created (optional)
+        max_created: The latest unix timestamp for when a review was created (optional)
+    
+    Returns:
+        Dictionary containing:
+        - success: Whether the request was successful
+        - count: Total number of reviews
+        - results: Array of review objects with details like:
+          - rating: Review rating
+          - review: Review text
+          - language: Language code
+          - buyer_user_id: ID of the buyer who left the review
+          - listing_id: ID of the listing that was reviewed
+          - create_timestamp: When the review was created
+          - created_timestamp: When the review was created
+          - update_timestamp: When the review was last updated
+          - updated_timestamp: When the review was last updated
+    
+    Example:
+        - Get all reviews: get_reviews_by_shop()
+        - Get recent reviews: get_reviews_by_shop(min_created=1609459200)
+        - Get paginated reviews: get_reviews_by_shop(limit=50, offset=0)
+    """
+    if etsy_client is None:
+        return {
+            "success": False,
+            "error": "Not connected to Etsy. Please use connect_etsy tool first."
+        }
+    
+    try:
+        user_data = await etsy_client.get_current_user()
+        shop_id = user_data.get("shop_id")
+        
+        if not shop_id:
+            return {
+                "success": False,
+                "error": "No shop_id found for this user."
+            }
+        
+        # Validate limit
+        if limit < 1 or limit > 100:
+            return {
+                "success": False,
+                "error": "Limit must be between 1 and 100."
+            }
+        
+        reviews_data = await etsy_client.get_reviews_by_shop(
+            str(shop_id),
+            limit=limit,
+            offset=offset,
+            min_created=min_created,
+            max_created=max_created
+        )
+        
+        return {
+            "success": True,
+            "count": reviews_data.get("count", 0),
+            "results": reviews_data.get("results", [])
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Error retrieving shop reviews: {str(e)}"
+        }
+
+
 if __name__ == "__main__":
     # Run the MCP server
     mcp.run()

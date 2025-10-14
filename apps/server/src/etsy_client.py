@@ -564,6 +564,82 @@ class EtsyClient:
             return response.json()
         return {"deleted": True, "shop_section_id": shop_section_id}
     
+    async def get_reviews_by_listing(
+        self,
+        listing_id: str,
+        limit: int = 25,
+        offset: int = 0,
+        min_created: Optional[int] = None,
+        max_created: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        Retrieve reviews for a specific listing.
+        
+        Args:
+            listing_id: The numeric ID of the listing.
+            limit: Number of results to return (max 100). Default is 25.
+            offset: Offset for pagination. Default is 0.
+            min_created: The earliest unix timestamp for when a review was created.
+            max_created: The latest unix timestamp for when a review was created.
+        
+        Returns:
+            Dictionary containing reviews array and pagination info.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/listings/{listing_id}/reviews"
+        params: Dict[str, Any] = {
+            "limit": limit,
+            "offset": offset
+        }
+        if min_created is not None:
+            params["min_created"] = min_created
+        if max_created is not None:
+            params["max_created"] = max_created
+        
+        response = await self.async_client.get(url, headers=self._get_headers(), params=params)
+        response.raise_for_status()
+        return response.json()
+    
+    async def get_reviews_by_shop(
+        self,
+        shop_id: str,
+        limit: int = 25,
+        offset: int = 0,
+        min_created: Optional[int] = None,
+        max_created: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        Retrieve reviews for a specific shop.
+        
+        Args:
+            shop_id: The unique identifier for the shop.
+            limit: Number of results to return (max 100). Default is 25.
+            offset: Offset for pagination. Default is 0.
+            min_created: The earliest unix timestamp for when a review was created.
+            max_created: The latest unix timestamp for when a review was created.
+        
+        Returns:
+            Dictionary containing reviews array and pagination info.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/shops/{shop_id}/reviews"
+        params: Dict[str, Any] = {
+            "limit": limit,
+            "offset": offset
+        }
+        if min_created is not None:
+            params["min_created"] = min_created
+        if max_created is not None:
+            params["max_created"] = max_created
+        
+        response = await self.async_client.get(url, headers=self._get_headers(), params=params)
+        response.raise_for_status()
+        return response.json()
+    
     async def close(self):
         """Close the HTTP clients."""
         self.client.close()
