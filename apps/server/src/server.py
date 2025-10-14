@@ -6,6 +6,7 @@ from pathlib import Path
 import webbrowser
 import keyring
 import json
+import asyncio
 from datetime import datetime
 from typing import Optional, Dict, Any
 
@@ -40,9 +41,10 @@ etsy_client = None
 KEYRING_SERVICE = "etsy-seller-mcp"
 KEYRING_TOKEN_KEY = "access_token"
 KEYRING_METADATA_KEY = "token_metadata"
+KEYRING_REFRESH_TOKEN_KEY = "refresh_token"
 
 
-def save_token_to_keyring(access_token: str, expires_at: str) -> None:
+def save_token_to_keyring(access_token: str, expires_at: str, refresh_token: str | None = None) -> None:
     """
     Save OAuth token to system keyring.
     
@@ -57,6 +59,9 @@ def save_token_to_keyring(access_token: str, expires_at: str) -> None:
         # Store metadata (expiration time)
         metadata = json.dumps({"expires_at": expires_at})
         keyring.set_password(KEYRING_SERVICE, KEYRING_METADATA_KEY, metadata)
+        # Store refresh token if available
+        if refresh_token:
+            keyring.set_password(KEYRING_SERVICE, KEYRING_REFRESH_TOKEN_KEY, refresh_token)
         
         print(f"✓ Token saved to system keyring")
     except Exception as e:
@@ -83,6 +88,7 @@ def load_token_from_keyring() -> Optional[Dict[str, Any]]:
         
         metadata = json.loads(metadata_json)
         expires_at = metadata.get("expires_at")
+        refresh_token = keyring.get_password(KEYRING_SERVICE, KEYRING_REFRESH_TOKEN_KEY)
         
         # Check if token is expired
         if expires_at:
@@ -94,7 +100,8 @@ def load_token_from_keyring() -> Optional[Dict[str, Any]]:
         
         return {
             "access_token": access_token,
-            "expires_at": expires_at
+            "expires_at": expires_at,
+            "refresh_token": refresh_token,
         }
     except Exception as e:
         print(f"Warning: Could not load token from keyring: {e}")
@@ -106,6 +113,10 @@ def delete_token_from_keyring() -> None:
     try:
         keyring.delete_password(KEYRING_SERVICE, KEYRING_TOKEN_KEY)
         keyring.delete_password(KEYRING_SERVICE, KEYRING_METADATA_KEY)
+        try:
+            keyring.delete_password(KEYRING_SERVICE, KEYRING_REFRESH_TOKEN_KEY)
+        except keyring.errors.PasswordDeleteError:
+            pass
         print("✓ Token deleted from system keyring")
     except keyring.errors.PasswordDeleteError:
         # Token doesn't exist, that's fine
@@ -125,6 +136,32 @@ def restore_session_from_keyring() -> bool:
     
     token_data = load_token_from_keyring()
     if token_data:
+        # If expired but we have a refresh token, attempt refresh
+        refresh_token = token_data.get("refresh_token")
+        expires_at = token_data.get("expires_at")
+        needs_refresh = False
+        if expires_at:
+            try:
+                expiry_dt = datetime.fromisoformat(expires_at)
+                needs_refresh = datetime.utcnow() >= expiry_dt
+            except Exception:
+                needs_refresh = False
+
+        if needs_refresh and refresh_token and oauth_manager:
+            try:
+                print("Access token expired. Attempting refresh...")
+                refreshed = await oauth_manager.refresh_access_token(refresh_token)
+                session_token = refreshed["access_token"]
+                etsy_client = EtsyClient(access_token=session_token)
+                save_token_to_keyring(session_token, refreshed["expires_at"], refreshed.get("refresh_token"))
+                print("✓ Access token refreshed using stored refresh token")
+                return True
+            except Exception as e:
+                print(f"Warning: token refresh failed: {e}")
+                delete_token_from_keyring()
+                return False
+
+        # Normal restore path
         session_token = token_data["access_token"]
         etsy_client = EtsyClient(access_token=session_token)
         print(f"\n{'='*60}")
@@ -230,7 +267,7 @@ async def connect_etsy() -> dict:
         session_token = token_data["access_token"]
         
         # Save token to system keyring for persistence
-        save_token_to_keyring(session_token, token_data["expires_at"])
+        save_token_to_keyring(session_token, token_data["expires_at"], token_data.get("refresh_token"))
         
         # Initialize Etsy client with the access token
         etsy_client = EtsyClient(access_token=session_token)
@@ -302,7 +339,7 @@ async def get_connection_status() -> dict:
 
 
 @mcp.tool()
-async def auth(action: str) -> dict:
+async def auth(action: str, refresh_token: str = None) -> dict:
     """
     Consolidated authentication tool.
     
@@ -313,15 +350,35 @@ async def auth(action: str) -> dict:
         Result dictionary matching the specific action.
     """
     normalized = (action or "").strip().lower()
-    if normalized not in {"connect", "disconnect", "status"}:
-        return {"success": False, "error": "Invalid action. Use one of: connect, disconnect, status."}
+    if normalized not in {"connect", "disconnect", "status", "refresh"}:
+        return {"success": False, "error": "Invalid action. Use one of: connect, disconnect, status, refresh."}
 
     if normalized == "status":
         return await get_connection_status()
     if normalized == "connect":
         return await connect_etsy()
-    # normalized == "disconnect"
-    return await disconnect_etsy()
+    if normalized == "disconnect":
+        return await disconnect_etsy()
+    # normalized == "refresh"
+    if not oauth_manager:
+        return {"success": False, "error": "OAuth manager not initialized. Set ETSY_API_KEY."}
+    token_to_use = refresh_token
+    if not token_to_use:
+        try:
+            token_to_use = keyring.get_password(KEYRING_SERVICE, KEYRING_REFRESH_TOKEN_KEY)
+        except Exception:
+            token_to_use = None
+    if not token_to_use:
+        return {"success": False, "error": "No refresh token found. Connect first to obtain one."}
+    try:
+        refreshed = await oauth_manager.refresh_access_token(token_to_use)
+        global session_token, etsy_client
+        session_token = refreshed["access_token"]
+        etsy_client = EtsyClient(access_token=session_token)
+        save_token_to_keyring(session_token, refreshed["expires_at"], refreshed.get("refresh_token"))
+        return {"success": True, "message": "Access token refreshed", "expires_at": refreshed["expires_at"]}
+    except Exception as e:
+        return {"success": False, "error": f"Refresh failed: {e}"}
 
 
 @mcp.tool()

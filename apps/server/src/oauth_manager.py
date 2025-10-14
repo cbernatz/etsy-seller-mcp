@@ -1,7 +1,6 @@
 """OAuth 2.0 manager for Etsy API authentication with PKCE.
 
-This manager handles session-based authentication only. Tokens are not persisted
-or automatically refreshed - users must reconnect when the session ends.
+Provides helpers for authorization code exchange and refresh token grant.
 """
 
 import os
@@ -133,6 +132,46 @@ class OAuthManager:
             return {
                 "access_token": data["access_token"],
                 "expires_at": expires_at,
-                "token_type": data.get("token_type", "Bearer")
+                "token_type": data.get("token_type", "Bearer"),
+                "refresh_token": data.get("refresh_token")
+            }
+
+    async def refresh_access_token(self, refresh_token: str) -> Dict[str, Any]:
+        """
+        Use a refresh token to obtain a new access token.
+        
+        Args:
+            refresh_token: The refresh token string issued by Etsy.
+        
+        Returns:
+            Dictionary containing:
+            - access_token
+            - expires_at (ISO timestamp)
+            - token_type
+            - refresh_token (may be rotated by server)
+        """
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                self.TOKEN_URL,
+                data={
+                    "grant_type": "refresh_token",
+                    "client_id": self.api_key,
+                    "refresh_token": refresh_token,
+                },
+                headers={
+                    "Content-Type": "application/x-www-form-urlencoded"
+                }
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            expires_in = data.get("expires_in", 3600)
+            expires_at = (datetime.utcnow() + timedelta(seconds=expires_in)).isoformat()
+
+            return {
+                "access_token": data["access_token"],
+                "expires_at": expires_at,
+                "token_type": data.get("token_type", "Bearer"),
+                "refresh_token": data.get("refresh_token", refresh_token),
             }
 
