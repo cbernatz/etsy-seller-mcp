@@ -141,7 +141,6 @@ def restore_session_from_keyring() -> bool:
 restore_session_from_keyring()
 
 
-@mcp.tool()
 async def connect_etsy() -> dict:
     """
     Connect your Etsy account via OAuth 2.0. This will open a browser window for authorization.
@@ -260,7 +259,6 @@ async def connect_etsy() -> dict:
         }
 
 
-@mcp.tool()
 async def disconnect_etsy() -> dict:
     """
     Disconnect the current Etsy session by clearing the token from memory and system keyring.
@@ -289,7 +287,6 @@ async def disconnect_etsy() -> dict:
     }
 
 
-@mcp.tool()
 async def get_connection_status() -> dict:
     """
     Check if there's an active Etsy connection in this session.
@@ -302,6 +299,29 @@ async def get_connection_status() -> dict:
         "connected": etsy_client is not None,
         "message": "Connected to Etsy" if etsy_client else "Not connected. Use connect_etsy to authenticate."
     }
+
+
+@mcp.tool()
+async def auth(action: str) -> dict:
+    """
+    Consolidated authentication tool.
+    
+    Args:
+        action: One of 'connect', 'disconnect', 'status'
+    
+    Returns:
+        Result dictionary matching the specific action.
+    """
+    normalized = (action or "").strip().lower()
+    if normalized not in {"connect", "disconnect", "status"}:
+        return {"success": False, "error": "Invalid action. Use one of: connect, disconnect, status."}
+
+    if normalized == "status":
+        return await get_connection_status()
+    if normalized == "connect":
+        return await connect_etsy()
+    # normalized == "disconnect"
+    return await disconnect_etsy()
 
 
 @mcp.tool()
