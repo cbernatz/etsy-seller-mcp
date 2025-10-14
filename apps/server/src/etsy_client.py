@@ -1600,6 +1600,526 @@ class EtsyClient:
         response.raise_for_status()
         return response.json()
     
+    # Receipt Management Methods
+    
+    async def get_shop_receipts(
+        self,
+        shop_id: str,
+        limit: int = 25,
+        offset: int = 0,
+        min_created: Optional[int] = None,
+        max_created: Optional[int] = None,
+        min_last_modified: Optional[int] = None,
+        max_last_modified: Optional[int] = None,
+        was_paid: Optional[bool] = None,
+        was_shipped: Optional[bool] = None,
+        was_delivered: Optional[bool] = None,
+        was_canceled: Optional[bool] = None,
+        sort_on: str = "created",
+        sort_order: str = "desc"
+    ) -> Dict[str, Any]:
+        """
+        Get shop receipts with optional filters.
+        
+        Args:
+            shop_id: The unique identifier for the shop.
+            limit: Number of results to return (max 100). Default is 25.
+            offset: Offset for pagination. Default is 0.
+            min_created: The earliest unix timestamp for when a record was created.
+            max_created: The latest unix timestamp for when a record was created.
+            min_last_modified: The earliest unix timestamp for when a record last changed.
+            max_last_modified: The latest unix timestamp for when a record last changed.
+            was_paid: Filter by payment status.
+            was_shipped: Filter by shipment status.
+            was_delivered: Filter by delivery status.
+            was_canceled: Filter by cancellation status.
+            sort_on: Sort by field. Options: 'created', 'updated', 'receipt_id'.
+            sort_order: Sort order. Options: 'asc', 'desc'.
+        
+        Returns:
+            Dictionary containing receipts array and pagination info.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/shops/{shop_id}/receipts"
+        params: Dict[str, Any] = {
+            "limit": limit,
+            "offset": offset,
+            "sort_on": sort_on,
+            "sort_order": sort_order
+        }
+        
+        if min_created is not None:
+            params["min_created"] = min_created
+        if max_created is not None:
+            params["max_created"] = max_created
+        if min_last_modified is not None:
+            params["min_last_modified"] = min_last_modified
+        if max_last_modified is not None:
+            params["max_last_modified"] = max_last_modified
+        if was_paid is not None:
+            params["was_paid"] = was_paid
+        if was_shipped is not None:
+            params["was_shipped"] = was_shipped
+        if was_delivered is not None:
+            params["was_delivered"] = was_delivered
+        if was_canceled is not None:
+            params["was_canceled"] = was_canceled
+        
+        response = await self.async_client.get(url, headers=self._get_headers(), params=params)
+        response.raise_for_status()
+        return response.json()
+    
+    async def get_shop_receipt(
+        self,
+        shop_id: str,
+        receipt_id: str
+    ) -> Dict[str, Any]:
+        """
+        Get a single shop receipt by ID.
+        
+        Args:
+            shop_id: The unique identifier for the shop.
+            receipt_id: The numeric ID of the receipt.
+        
+        Returns:
+            Dictionary containing receipt details.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/shops/{shop_id}/receipts/{receipt_id}"
+        response = await self.async_client.get(url, headers=self._get_headers())
+        response.raise_for_status()
+        return response.json()
+    
+    async def update_shop_receipt(
+        self,
+        shop_id: str,
+        receipt_id: str,
+        was_shipped: Optional[bool] = None,
+        was_paid: Optional[bool] = None
+    ) -> Dict[str, Any]:
+        """
+        Update a shop receipt.
+        
+        Args:
+            shop_id: The unique identifier for the shop.
+            receipt_id: The numeric ID of the receipt.
+            was_shipped: Whether the receipt has been shipped.
+            was_paid: Whether the receipt has been paid.
+        
+        Returns:
+            Dictionary containing the updated receipt.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/shops/{shop_id}/receipts/{receipt_id}"
+        headers = {
+            "x-api-key": self.api_key,
+            "Authorization": f"Bearer {self.access_token}",
+            "Content-Type": "application/x-www-form-urlencoded",
+        }
+        
+        data: Dict[str, Any] = {}
+        if was_shipped is not None:
+            data["was_shipped"] = was_shipped
+        if was_paid is not None:
+            data["was_paid"] = was_paid
+        
+        response = await self.async_client.put(url, headers=headers, data=data)
+        response.raise_for_status()
+        return response.json()
+    
+    async def create_receipt_shipment(
+        self,
+        shop_id: str,
+        receipt_id: str,
+        tracking_code: Optional[str] = None,
+        carrier_name: Optional[str] = None,
+        send_bcc: bool = False,
+        note_to_buyer: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Submit tracking information for a shop receipt.
+        
+        Args:
+            shop_id: The unique identifier for the shop.
+            receipt_id: The numeric ID of the receipt.
+            tracking_code: The tracking code for this receipt.
+            carrier_name: The carrier name for this receipt.
+            send_bcc: If true, shipping notification sent to seller as well.
+            note_to_buyer: Message to include in notification to the buyer.
+        
+        Returns:
+            Dictionary containing the updated receipt with shipment info.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/shops/{shop_id}/receipts/{receipt_id}/tracking"
+        headers = {
+            "x-api-key": self.api_key,
+            "Authorization": f"Bearer {self.access_token}",
+            "Content-Type": "application/x-www-form-urlencoded",
+        }
+        
+        data: Dict[str, Any] = {}
+        if tracking_code is not None:
+            data["tracking_code"] = tracking_code
+        if carrier_name is not None:
+            data["carrier_name"] = carrier_name
+        if send_bcc:
+            data["send_bcc"] = send_bcc
+        if note_to_buyer is not None:
+            data["note_to_buyer"] = note_to_buyer
+        
+        response = await self.async_client.post(url, headers=headers, data=data)
+        response.raise_for_status()
+        return response.json()
+    
+    # Transaction Methods
+    
+    async def get_shop_transactions(
+        self,
+        shop_id: str,
+        limit: int = 25,
+        offset: int = 0
+    ) -> Dict[str, Any]:
+        """
+        Get all transactions for a shop.
+        
+        Args:
+            shop_id: The unique identifier for the shop.
+            limit: Number of results to return (max 100). Default is 25.
+            offset: Offset for pagination. Default is 0.
+        
+        Returns:
+            Dictionary containing transactions array and pagination info.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/shops/{shop_id}/transactions"
+        params = {
+            "limit": limit,
+            "offset": offset
+        }
+        response = await self.async_client.get(url, headers=self._get_headers(), params=params)
+        response.raise_for_status()
+        return response.json()
+    
+    async def get_receipt_transactions(
+        self,
+        shop_id: str,
+        receipt_id: str
+    ) -> Dict[str, Any]:
+        """
+        Get transactions for a specific receipt.
+        
+        Args:
+            shop_id: The unique identifier for the shop.
+            receipt_id: The numeric ID of the receipt.
+        
+        Returns:
+            Dictionary containing transactions array.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/shops/{shop_id}/receipts/{receipt_id}/transactions"
+        response = await self.async_client.get(url, headers=self._get_headers())
+        response.raise_for_status()
+        return response.json()
+    
+    async def get_listing_transactions(
+        self,
+        shop_id: str,
+        listing_id: str,
+        limit: int = 25,
+        offset: int = 0
+    ) -> Dict[str, Any]:
+        """
+        Get transactions for a specific listing.
+        
+        Args:
+            shop_id: The unique identifier for the shop.
+            listing_id: The numeric ID of the listing.
+            limit: Number of results to return (max 100). Default is 25.
+            offset: Offset for pagination. Default is 0.
+        
+        Returns:
+            Dictionary containing transactions array and pagination info.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/shops/{shop_id}/listings/{listing_id}/transactions"
+        params = {
+            "limit": limit,
+            "offset": offset
+        }
+        response = await self.async_client.get(url, headers=self._get_headers(), params=params)
+        response.raise_for_status()
+        return response.json()
+    
+    # Listing Creation Methods
+    
+    async def create_draft_listing(
+        self,
+        shop_id: str,
+        quantity: int,
+        title: str,
+        description: str,
+        price: float,
+        who_made: str,
+        when_made: str,
+        taxonomy_id: int,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """
+        Create a draft listing.
+        
+        Args:
+            shop_id: The unique identifier for the shop.
+            quantity: Positive non-zero number of products available.
+            title: The listing's title string.
+            description: Description of the product for sale.
+            price: Positive non-zero price of the product.
+            who_made: Who made the product. Options: 'i_did', 'someone_else', 'collective'.
+            when_made: When the product was made. Options: 'made_to_order', '2020_2025', etc.
+            taxonomy_id: The numerical taxonomy ID of the listing.
+            **kwargs: Optional parameters like shipping_profile_id, return_policy_id, tags, 
+                     materials, is_supply, type, shop_section_id, etc.
+        
+        Returns:
+            Dictionary containing the created listing.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/shops/{shop_id}/listings"
+        headers = {
+            "x-api-key": self.api_key,
+            "Authorization": f"Bearer {self.access_token}",
+            "Content-Type": "application/x-www-form-urlencoded",
+        }
+        
+        data: Dict[str, Any] = {
+            "quantity": quantity,
+            "title": title,
+            "description": description,
+            "price": price,
+            "who_made": who_made,
+            "when_made": when_made,
+            "taxonomy_id": taxonomy_id
+        }
+        
+        # Add optional parameters
+        for key, value in kwargs.items():
+            if value is not None:
+                data[key] = value
+        
+        response = await self.async_client.post(url, headers=headers, data=data)
+        response.raise_for_status()
+        return response.json()
+    
+    # Listing Image Methods
+    
+    async def get_listing_images(
+        self,
+        listing_id: str
+    ) -> Dict[str, Any]:
+        """
+        Get all images for a listing.
+        
+        Args:
+            listing_id: The numeric ID of the listing.
+        
+        Returns:
+            Dictionary containing images array.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/listings/{listing_id}/images"
+        response = await self.async_client.get(url, headers=self._get_headers())
+        response.raise_for_status()
+        return response.json()
+    
+    async def upload_listing_image(
+        self,
+        shop_id: str,
+        listing_id: str,
+        image_path: str,
+        rank: Optional[int] = None,
+        overwrite: bool = False,
+        is_watermarked: bool = False,
+        alt_text: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Upload a new image to a listing.
+        
+        Args:
+            shop_id: The unique identifier for the shop.
+            listing_id: The numeric ID of the listing.
+            image_path: Path to the image file to upload.
+            rank: Position in the images displayed (1 is leftmost).
+            overwrite: When true, replaces existing image at given rank.
+            is_watermarked: When true, indicates the image has a watermark.
+            alt_text: Alt text for the image (max 500 characters).
+        
+        Returns:
+            Dictionary containing the uploaded image details.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        import mimetypes
+        from pathlib import Path
+        
+        url = f"{self.BASE_URL}/application/shops/{shop_id}/listings/{listing_id}/images"
+        headers = {
+            "x-api-key": self.api_key,
+            "Authorization": f"Bearer {self.access_token}",
+        }
+        
+        # Read image file
+        image_file = Path(image_path)
+        mime_type = mimetypes.guess_type(image_path)[0] or "image/jpeg"
+        
+        with open(image_file, "rb") as f:
+            image_data = f.read()
+        
+        # Prepare multipart form data
+        files = {"image": (image_file.name, image_data, mime_type)}
+        data: Dict[str, Any] = {}
+        
+        if rank is not None:
+            data["rank"] = rank
+        if overwrite:
+            data["overwrite"] = overwrite
+        if is_watermarked:
+            data["is_watermarked"] = is_watermarked
+        if alt_text is not None:
+            data["alt_text"] = alt_text
+        
+        response = await self.async_client.post(url, headers=headers, files=files, data=data)
+        response.raise_for_status()
+        return response.json()
+    
+    async def delete_listing_image(
+        self,
+        shop_id: str,
+        listing_id: str,
+        listing_image_id: str
+    ) -> Dict[str, Any]:
+        """
+        Delete an image from a listing.
+        
+        Args:
+            shop_id: The unique identifier for the shop.
+            listing_id: The numeric ID of the listing.
+            listing_image_id: The numeric ID of the image to delete.
+        
+        Returns:
+            Dictionary confirming deletion.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/shops/{shop_id}/listings/{listing_id}/images/{listing_image_id}"
+        response = await self.async_client.delete(url, headers=self._get_headers())
+        response.raise_for_status()
+        if response.text:
+            return response.json()
+        return {"deleted": True, "listing_image_id": listing_image_id}
+    
+    async def update_variation_images(
+        self,
+        shop_id: str,
+        listing_id: str,
+        variation_images: list
+    ) -> Dict[str, Any]:
+        """
+        Update variation images for a listing.
+        
+        Args:
+            shop_id: The unique identifier for the shop.
+            listing_id: The numeric ID of the listing.
+            variation_images: Array of objects with property_id, value_id, and image_id.
+        
+        Returns:
+            Dictionary containing the updated variation images.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/shops/{shop_id}/listings/{listing_id}/variation-images"
+        headers = {
+            "x-api-key": self.api_key,
+            "Authorization": f"Bearer {self.access_token}",
+            "Content-Type": "application/json",
+        }
+        
+        payload = {"variation_images": variation_images}
+        
+        response = await self.async_client.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        return response.json()
+    
+    # Inventory Update Methods
+    
+    async def update_listing_inventory(
+        self,
+        listing_id: str,
+        products: list,
+        price_on_property: Optional[list] = None,
+        quantity_on_property: Optional[list] = None,
+        sku_on_property: Optional[list] = None,
+        readiness_state_on_property: Optional[list] = None
+    ) -> Dict[str, Any]:
+        """
+        Update the inventory for a listing.
+        
+        Args:
+            listing_id: The numeric ID of the listing.
+            products: Array of product objects with offerings.
+            price_on_property: Array of property IDs that affect pricing.
+            quantity_on_property: Array of property IDs that affect quantity.
+            sku_on_property: Array of property IDs that affect SKU.
+            readiness_state_on_property: Array of property IDs that affect processing.
+        
+        Returns:
+            Dictionary containing the updated inventory.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/listings/{listing_id}/inventory"
+        headers = {
+            "x-api-key": self.api_key,
+            "Authorization": f"Bearer {self.access_token}",
+            "Content-Type": "application/json",
+        }
+        
+        payload: Dict[str, Any] = {"products": products}
+        
+        if price_on_property is not None:
+            payload["price_on_property"] = price_on_property
+        if quantity_on_property is not None:
+            payload["quantity_on_property"] = quantity_on_property
+        if sku_on_property is not None:
+            payload["sku_on_property"] = sku_on_property
+        if readiness_state_on_property is not None:
+            payload["readiness_state_on_property"] = readiness_state_on_property
+        
+        response = await self.async_client.put(url, headers=headers, json=payload)
+        response.raise_for_status()
+        return response.json()
+    
     async def close(self):
         """Close the HTTP clients."""
         self.client.close()
