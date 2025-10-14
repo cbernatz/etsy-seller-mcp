@@ -125,7 +125,7 @@ def delete_token_from_keyring() -> None:
         print(f"Warning: Could not delete token from keyring: {e}")
 
 
-def restore_session_from_keyring() -> bool:
+async def restore_session_from_keyring() -> bool:
     """
     Restore session from keyring on server startup.
     
@@ -175,7 +175,7 @@ def restore_session_from_keyring() -> bool:
 
 
 # Try to restore session on startup
-restore_session_from_keyring()
+asyncio.run(restore_session_from_keyring())
 
 
 async def connect_etsy() -> dict:
