@@ -277,6 +277,54 @@ class EtsyClient:
         response.raise_for_status()
         return response.json()
 
+    async def update_listing_property(
+        self,
+        shop_id: str,
+        listing_id: str,
+        property_id: int,
+        value_ids: list,
+        values: list,
+        scale_id: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        Update or populate a listing property (e.g., color, occasion, holiday).
+        
+        Args:
+            shop_id: The unique identifier for the shop.
+            listing_id: The numeric ID of the listing to update.
+            property_id: The unique ID of the property (e.g., 200 for Primary Color).
+            value_ids: Array of value IDs for the property.
+            values: Array of value strings for the property.
+            scale_id: Optional scale ID for properties that have scales.
+        
+        Returns:
+            Dictionary containing the updated listing property information.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/shops/{shop_id}/listings/{listing_id}/properties/{property_id}"
+        
+        # Build form data
+        data = {
+            "value_ids": value_ids,
+            "values": values
+        }
+        
+        if scale_id is not None:
+            data["scale_id"] = scale_id
+        
+        # updateListingProperty expects application/x-www-form-urlencoded format
+        headers = {
+            "x-api-key": self.api_key,
+            "Authorization": f"Bearer {self.access_token}",
+            "Content-Type": "application/x-www-form-urlencoded",
+        }
+        
+        response = await self.async_client.put(url, headers=headers, data=data)
+        response.raise_for_status()
+        return response.json()
+
     async def get_processing_profiles(
         self,
         shop_id: str,

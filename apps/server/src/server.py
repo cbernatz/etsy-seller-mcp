@@ -662,6 +662,7 @@ async def update_my_listing(
     price: float = None,
     quantity: int = None,
     tags: list = None,
+    materials: list = None,
     shop_section_id: int = None
 ) -> dict:
     """
@@ -676,6 +677,7 @@ async def update_my_listing(
         price: New price (in dollars, e.g., 5.50 for $5.50)
         quantity: New quantity available
         tags: List of tags for the listing
+        materials: List of materials used in the product
         shop_section_id: ID of the shop section to assign this listing to
     
     Returns:
@@ -730,6 +732,9 @@ async def update_my_listing(
         if tags is not None:
             update_params['tags'] = tags
         
+        if materials is not None:
+            update_params['materials'] = materials
+        
         if shop_section_id is not None:
             update_params['shop_section_id'] = shop_section_id
         
@@ -751,6 +756,95 @@ async def update_my_listing(
         return {
             "success": False,
             "error": f"Error updating listing: {str(e)}"
+        }
+
+
+@mcp.tool()
+async def update_listing_property(
+    listing_id: int,
+    property_id: int,
+    value_ids: list,
+    values: list,
+    scale_id: int = None
+) -> dict:
+    """
+    Update or populate a listing property (e.g., color, occasion, holiday, materials).
+    
+    This endpoint allows you to set taxonomy properties on your listings to improve 
+    discoverability. Common properties include Primary Color (200), Secondary Color (52047899002),
+    Occasion (46803063641), Holiday (46803063659), and Materials (148789511893).
+    
+    Args:
+        listing_id: The numeric ID of the listing to update
+        property_id: The unique ID of the property to update
+        value_ids: Array of value IDs for the property
+        values: Array of value strings corresponding to the value_ids
+        scale_id: Optional scale ID for properties that have measurement scales
+    
+    Returns:
+        Dictionary containing:
+        - success: Whether the update was successful
+        - message: Confirmation message
+        - property: Updated property information
+    
+    Example:
+        Set holiday to Christmas:
+        update_listing_property(
+            listing_id=123,
+            property_id=46803063659,
+            value_ids=[35],
+            values=["Christmas"]
+        )
+    """
+    if etsy_client is None:
+        return {
+            "success": False,
+            "error": "Not connected to Etsy. Please use connect_etsy tool first."
+        }
+    
+    try:
+        # Get current user info to extract shop_id
+        user_data = await etsy_client.get_current_user()
+        shop_id = user_data.get("shop_id")
+        
+        if not shop_id:
+            return {
+                "success": False,
+                "error": "No shop_id found for this user."
+            }
+        
+        # Validate inputs
+        if not value_ids or not values:
+            return {
+                "success": False,
+                "error": "Both value_ids and values are required and cannot be empty."
+            }
+        
+        if len(value_ids) != len(values):
+            return {
+                "success": False,
+                "error": "value_ids and values arrays must have the same length."
+            }
+        
+        # Update the listing property
+        result = await etsy_client.update_listing_property(
+            str(shop_id),
+            str(listing_id),
+            property_id,
+            value_ids,
+            values,
+            scale_id
+        )
+        
+        return {
+            "success": True,
+            "message": f"Successfully updated property {property_id} for listing {listing_id}",
+            "property": result
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Error updating listing property: {str(e)}"
         }
 
 
