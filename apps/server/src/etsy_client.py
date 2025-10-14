@@ -2120,6 +2120,568 @@ class EtsyClient:
         response.raise_for_status()
         return response.json()
     
+    # Listing File Methods (Digital Products)
+    
+    async def get_listing_files(
+        self,
+        listing_id: str
+    ) -> Dict[str, Any]:
+        """
+        Get all files for a listing.
+        
+        Args:
+            listing_id: The numeric ID of the listing.
+        
+        Returns:
+            Dictionary containing files array.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/listings/{listing_id}/files"
+        response = await self.async_client.get(url, headers=self._get_headers())
+        response.raise_for_status()
+        return response.json()
+    
+    async def get_listing_file(
+        self,
+        shop_id: str,
+        listing_id: str,
+        listing_file_id: str
+    ) -> Dict[str, Any]:
+        """
+        Get a single file for a listing.
+        
+        Args:
+            shop_id: The unique identifier for the shop.
+            listing_id: The numeric ID of the listing.
+            listing_file_id: The numeric ID of the file.
+        
+        Returns:
+            Dictionary containing file metadata.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/shops/{shop_id}/listings/{listing_id}/files/{listing_file_id}"
+        response = await self.async_client.get(url, headers=self._get_headers())
+        response.raise_for_status()
+        return response.json()
+    
+    async def upload_listing_file(
+        self,
+        shop_id: str,
+        listing_id: str,
+        file_path: str,
+        name: Optional[str] = None,
+        rank: int = 1
+    ) -> Dict[str, Any]:
+        """
+        Upload a file to a digital listing.
+        
+        Args:
+            shop_id: The unique identifier for the shop.
+            listing_id: The numeric ID of the listing.
+            file_path: Path to the file to upload.
+            name: Optional name for the file.
+            rank: Position in file display (default: 1).
+        
+        Returns:
+            Dictionary containing the uploaded file metadata.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        import mimetypes
+        from pathlib import Path
+        
+        url = f"{self.BASE_URL}/application/shops/{shop_id}/listings/{listing_id}/files"
+        headers = {
+            "x-api-key": self.api_key,
+            "Authorization": f"Bearer {self.access_token}",
+        }
+        
+        file_obj = Path(file_path)
+        mime_type = mimetypes.guess_type(file_path)[0] or "application/octet-stream"
+        
+        with open(file_obj, "rb") as f:
+            file_data = f.read()
+        
+        files = {"file": (file_obj.name, file_data, mime_type)}
+        data: Dict[str, Any] = {"rank": rank}
+        
+        if name is not None:
+            data["name"] = name
+        
+        response = await self.async_client.post(url, headers=headers, files=files, data=data)
+        response.raise_for_status()
+        return response.json()
+    
+    async def delete_listing_file(
+        self,
+        shop_id: str,
+        listing_id: str,
+        listing_file_id: str
+    ) -> Dict[str, Any]:
+        """
+        Delete a file from a listing.
+        
+        Args:
+            shop_id: The unique identifier for the shop.
+            listing_id: The numeric ID of the listing.
+            listing_file_id: The numeric ID of the file.
+        
+        Returns:
+            Dictionary confirming deletion.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/shops/{shop_id}/listings/{listing_id}/files/{listing_file_id}"
+        response = await self.async_client.delete(url, headers=self._get_headers())
+        response.raise_for_status()
+        if response.text:
+            return response.json()
+        return {"deleted": True, "listing_file_id": listing_file_id}
+    
+    # Listing Video Methods
+    
+    async def get_listing_videos(
+        self,
+        listing_id: str
+    ) -> Dict[str, Any]:
+        """
+        Get all videos for a listing.
+        
+        Args:
+            listing_id: The numeric ID of the listing.
+        
+        Returns:
+            Dictionary containing videos array.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/listings/{listing_id}/videos"
+        response = await self.async_client.get(url, headers=self._get_headers())
+        response.raise_for_status()
+        return response.json()
+    
+    async def get_listing_video(
+        self,
+        listing_id: str,
+        video_id: str
+    ) -> Dict[str, Any]:
+        """
+        Get a single video for a listing.
+        
+        Args:
+            listing_id: The numeric ID of the listing.
+            video_id: The numeric ID of the video.
+        
+        Returns:
+            Dictionary containing video metadata.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/listings/{listing_id}/videos/{video_id}"
+        response = await self.async_client.get(url, headers=self._get_headers())
+        response.raise_for_status()
+        return response.json()
+    
+    async def upload_listing_video(
+        self,
+        shop_id: str,
+        listing_id: str,
+        video_path: str,
+        name: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Upload a video to a listing.
+        
+        Args:
+            shop_id: The unique identifier for the shop.
+            listing_id: The numeric ID of the listing.
+            video_path: Path to the video file to upload.
+            name: Optional name for the video.
+        
+        Returns:
+            Dictionary containing the uploaded video metadata.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        import mimetypes
+        from pathlib import Path
+        
+        url = f"{self.BASE_URL}/application/shops/{shop_id}/listings/{listing_id}/videos"
+        headers = {
+            "x-api-key": self.api_key,
+            "Authorization": f"Bearer {self.access_token}",
+        }
+        
+        video_obj = Path(video_path)
+        mime_type = mimetypes.guess_type(video_path)[0] or "video/mp4"
+        
+        with open(video_obj, "rb") as f:
+            video_data = f.read()
+        
+        files = {"video": (video_obj.name, video_data, mime_type)}
+        data: Dict[str, Any] = {}
+        
+        if name is not None:
+            data["name"] = name
+        
+        response = await self.async_client.post(url, headers=headers, files=files, data=data)
+        response.raise_for_status()
+        return response.json()
+    
+    async def delete_listing_video(
+        self,
+        shop_id: str,
+        listing_id: str,
+        video_id: str
+    ) -> Dict[str, Any]:
+        """
+        Delete a video from a listing.
+        
+        Args:
+            shop_id: The unique identifier for the shop.
+            listing_id: The numeric ID of the listing.
+            video_id: The numeric ID of the video.
+        
+        Returns:
+            Dictionary confirming deletion.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/shops/{shop_id}/listings/{listing_id}/videos/{video_id}"
+        response = await self.async_client.delete(url, headers=self._get_headers())
+        response.raise_for_status()
+        if response.text:
+            return response.json()
+        return {"deleted": True, "video_id": video_id}
+    
+    # Listing Translation Methods
+    
+    async def create_listing_translation(
+        self,
+        shop_id: str,
+        listing_id: str,
+        language: str,
+        title: str,
+        description: str,
+        tags: Optional[list] = None
+    ) -> Dict[str, Any]:
+        """
+        Create a listing translation.
+        
+        Args:
+            shop_id: The unique identifier for the shop.
+            listing_id: The numeric ID of the listing.
+            language: IETF language tag (e.g., 'de', 'es', 'fr').
+            title: Translated title.
+            description: Translated description.
+            tags: Optional array of translated tags.
+        
+        Returns:
+            Dictionary containing the created translation.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/shops/{shop_id}/listings/{listing_id}/translations/{language}"
+        headers = {
+            "x-api-key": self.api_key,
+            "Authorization": f"Bearer {self.access_token}",
+            "Content-Type": "application/x-www-form-urlencoded",
+        }
+        
+        data: Dict[str, Any] = {
+            "title": title,
+            "description": description
+        }
+        
+        if tags is not None:
+            data["tags"] = tags
+        
+        response = await self.async_client.post(url, headers=headers, data=data)
+        response.raise_for_status()
+        return response.json()
+    
+    async def get_listing_translation(
+        self,
+        shop_id: str,
+        listing_id: str,
+        language: str
+    ) -> Dict[str, Any]:
+        """
+        Get a listing translation.
+        
+        Args:
+            shop_id: The unique identifier for the shop.
+            listing_id: The numeric ID of the listing.
+            language: IETF language tag (e.g., 'de', 'es', 'fr').
+        
+        Returns:
+            Dictionary containing the translation.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/shops/{shop_id}/listings/{listing_id}/translations/{language}"
+        response = await self.async_client.get(url, headers=self._get_headers())
+        response.raise_for_status()
+        return response.json()
+    
+    async def update_listing_translation(
+        self,
+        shop_id: str,
+        listing_id: str,
+        language: str,
+        title: str,
+        description: str,
+        tags: Optional[list] = None
+    ) -> Dict[str, Any]:
+        """
+        Update a listing translation.
+        
+        Args:
+            shop_id: The unique identifier for the shop.
+            listing_id: The numeric ID of the listing.
+            language: IETF language tag (e.g., 'de', 'es', 'fr').
+            title: Translated title.
+            description: Translated description.
+            tags: Optional array of translated tags.
+        
+        Returns:
+            Dictionary containing the updated translation.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/shops/{shop_id}/listings/{listing_id}/translations/{language}"
+        headers = {
+            "x-api-key": self.api_key,
+            "Authorization": f"Bearer {self.access_token}",
+            "Content-Type": "application/x-www-form-urlencoded",
+        }
+        
+        data: Dict[str, Any] = {
+            "title": title,
+            "description": description
+        }
+        
+        if tags is not None:
+            data["tags"] = tags
+        
+        response = await self.async_client.put(url, headers=headers, data=data)
+        response.raise_for_status()
+        return response.json()
+    
+    # Taxonomy Methods
+    
+    async def get_buyer_taxonomy(self) -> Dict[str, Any]:
+        """
+        Get the full buyer taxonomy tree.
+        
+        Returns:
+            Dictionary containing buyer taxonomy nodes.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/buyer-taxonomy/nodes"
+        response = await self.async_client.get(url, headers=self._get_headers())
+        response.raise_for_status()
+        return response.json()
+    
+    async def get_buyer_taxonomy_properties(
+        self,
+        taxonomy_id: str
+    ) -> Dict[str, Any]:
+        """
+        Get properties for a buyer taxonomy node.
+        
+        Args:
+            taxonomy_id: The numeric taxonomy ID.
+        
+        Returns:
+            Dictionary containing properties and values.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/buyer-taxonomy/nodes/{taxonomy_id}/properties"
+        response = await self.async_client.get(url, headers=self._get_headers())
+        response.raise_for_status()
+        return response.json()
+    
+    async def get_seller_taxonomy(self) -> Dict[str, Any]:
+        """
+        Get the full seller taxonomy tree.
+        
+        Returns:
+            Dictionary containing seller taxonomy nodes.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/seller-taxonomy/nodes"
+        response = await self.async_client.get(url, headers=self._get_headers())
+        response.raise_for_status()
+        return response.json()
+    
+    async def get_seller_taxonomy_properties(
+        self,
+        taxonomy_id: str
+    ) -> Dict[str, Any]:
+        """
+        Get properties for a seller taxonomy node.
+        
+        Args:
+            taxonomy_id: The numeric taxonomy ID.
+        
+        Returns:
+            Dictionary containing properties and values.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/seller-taxonomy/nodes/{taxonomy_id}/properties"
+        response = await self.async_client.get(url, headers=self._get_headers())
+        response.raise_for_status()
+        return response.json()
+    
+    # Featured Listings Methods
+    
+    async def get_featured_listings(
+        self,
+        shop_id: str,
+        limit: int = 25,
+        offset: int = 0
+    ) -> Dict[str, Any]:
+        """
+        Get featured listings for a shop.
+        
+        Args:
+            shop_id: The unique identifier for the shop.
+            limit: Number of results to return (max 100). Default is 25.
+            offset: Offset for pagination. Default is 0.
+        
+        Returns:
+            Dictionary containing featured listings array.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/shops/{shop_id}/listings/featured"
+        params = {
+            "limit": limit,
+            "offset": offset
+        }
+        response = await self.async_client.get(url, headers=self._get_headers(), params=params)
+        response.raise_for_status()
+        return response.json()
+    
+    # Production Partners Methods
+    
+    async def get_production_partners(
+        self,
+        shop_id: str
+    ) -> Dict[str, Any]:
+        """
+        Get production partners for a shop.
+        
+        Args:
+            shop_id: The unique identifier for the shop.
+        
+        Returns:
+            Dictionary containing production partners array.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/shops/{shop_id}/production-partners"
+        response = await self.async_client.get(url, headers=self._get_headers())
+        response.raise_for_status()
+        return response.json()
+    
+    # User Address Methods
+    
+    async def get_user_addresses(
+        self,
+        limit: int = 25,
+        offset: int = 0
+    ) -> Dict[str, Any]:
+        """
+        Get all user addresses.
+        
+        Args:
+            limit: Number of results to return (max 100). Default is 25.
+            offset: Offset for pagination. Default is 0.
+        
+        Returns:
+            Dictionary containing addresses array.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/user/addresses"
+        params = {
+            "limit": limit,
+            "offset": offset
+        }
+        response = await self.async_client.get(url, headers=self._get_headers(), params=params)
+        response.raise_for_status()
+        return response.json()
+    
+    async def get_user_address(
+        self,
+        user_address_id: str
+    ) -> Dict[str, Any]:
+        """
+        Get a single user address.
+        
+        Args:
+            user_address_id: The numeric ID of the address.
+        
+        Returns:
+            Dictionary containing address details.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/user/addresses/{user_address_id}"
+        response = await self.async_client.get(url, headers=self._get_headers())
+        response.raise_for_status()
+        return response.json()
+    
+    async def delete_user_address(
+        self,
+        user_address_id: str
+    ) -> Dict[str, Any]:
+        """
+        Delete a user address.
+        
+        Args:
+            user_address_id: The numeric ID of the address.
+        
+        Returns:
+            Dictionary confirming deletion.
+        
+        Raises:
+            httpx.HTTPError: If the API request fails.
+        """
+        url = f"{self.BASE_URL}/application/user/addresses/{user_address_id}"
+        response = await self.async_client.delete(url, headers=self._get_headers())
+        response.raise_for_status()
+        if response.text:
+            return response.json()
+        return {"deleted": True, "user_address_id": user_address_id}
+    
     async def close(self):
         """Close the HTTP clients."""
         self.client.close()

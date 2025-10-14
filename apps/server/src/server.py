@@ -3936,6 +3936,986 @@ async def update_listing_inventory(
         }
 
 
+# Listing File Management Tools (Digital Products)
+
+@mcp.tool()
+async def get_listing_files(listing_id: int) -> dict:
+    """
+    Get all files for a digital listing.
+    
+    Args:
+        listing_id: The numeric ID of the listing
+    
+    Returns:
+        Dictionary containing:
+        - success: Whether the request was successful
+        - count: Number of files
+        - results: Array of file objects
+    
+    Example:
+        - Get files: get_listing_files(listing_id=123456789)
+    """
+    if etsy_client is None:
+        return {
+            "success": False,
+            "error": "Not connected to Etsy. Please use connect_etsy tool first."
+        }
+    
+    try:
+        files_data = await etsy_client.get_listing_files(str(listing_id))
+        
+        return {
+            "success": True,
+            "count": files_data.get("count", 0),
+            "results": files_data.get("results", [])
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Error retrieving listing files: {str(e)}"
+        }
+
+
+@mcp.tool()
+async def get_listing_file(
+    listing_id: int,
+    listing_file_id: int
+) -> dict:
+    """
+    Get a single file from a digital listing.
+    
+    Args:
+        listing_id: The numeric ID of the listing
+        listing_file_id: The numeric ID of the file
+    
+    Returns:
+        Dictionary containing:
+        - success: Whether the request was successful
+        - file: File metadata object
+    
+    Example:
+        - Get file: get_listing_file(listing_id=123, listing_file_id=456)
+    """
+    if etsy_client is None:
+        return {
+            "success": False,
+            "error": "Not connected to Etsy. Please use connect_etsy tool first."
+        }
+    
+    try:
+        user_data = await etsy_client.get_current_user()
+        shop_id = user_data.get("shop_id")
+        
+        if not shop_id:
+            return {
+                "success": False,
+                "error": "No shop_id found for this user."
+            }
+        
+        file_data = await etsy_client.get_listing_file(
+            str(shop_id),
+            str(listing_id),
+            str(listing_file_id)
+        )
+        
+        return {
+            "success": True,
+            "file": file_data
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Error retrieving listing file: {str(e)}"
+        }
+
+
+@mcp.tool()
+async def upload_listing_file(
+    listing_id: int,
+    file_path: str,
+    name: str = None,
+    rank: int = 1
+) -> dict:
+    """
+    Upload a file to a digital listing.
+    
+    Args:
+        listing_id: The numeric ID of the listing
+        file_path: Path to the file to upload
+        name: Optional name for the file
+        rank: Position in file display (default: 1)
+    
+    Returns:
+        Dictionary containing:
+        - success: Whether upload was successful
+        - message: Confirmation message
+        - file: Uploaded file metadata
+    
+    Example:
+        - Upload file: upload_listing_file(listing_id=123, file_path="/path/to/file.pdf")
+    """
+    if etsy_client is None:
+        return {
+            "success": False,
+            "error": "Not connected to Etsy. Please use connect_etsy tool first."
+        }
+    
+    try:
+        from pathlib import Path
+        
+        # Validate file path
+        if not Path(file_path).exists():
+            return {
+                "success": False,
+                "error": f"File not found: {file_path}"
+            }
+        
+        user_data = await etsy_client.get_current_user()
+        shop_id = user_data.get("shop_id")
+        
+        if not shop_id:
+            return {
+                "success": False,
+                "error": "No shop_id found for this user."
+            }
+        
+        file_data = await etsy_client.upload_listing_file(
+            str(shop_id),
+            str(listing_id),
+            file_path=file_path,
+            name=name,
+            rank=rank
+        )
+        
+        return {
+            "success": True,
+            "message": f"Successfully uploaded file to listing {listing_id}",
+            "file": file_data
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Error uploading listing file: {str(e)}"
+        }
+
+
+@mcp.tool()
+async def delete_listing_file(
+    listing_id: int,
+    listing_file_id: int
+) -> dict:
+    """
+    Delete a file from a digital listing.
+    
+    Args:
+        listing_id: The numeric ID of the listing
+        listing_file_id: The numeric ID of the file to delete
+    
+    Returns:
+        Dictionary containing:
+        - success: Whether deletion was successful
+        - message: Confirmation message
+    
+    Example:
+        - Delete file: delete_listing_file(listing_id=123, listing_file_id=456)
+    """
+    if etsy_client is None:
+        return {
+            "success": False,
+            "error": "Not connected to Etsy. Please use connect_etsy tool first."
+        }
+    
+    try:
+        user_data = await etsy_client.get_current_user()
+        shop_id = user_data.get("shop_id")
+        
+        if not shop_id:
+            return {
+                "success": False,
+                "error": "No shop_id found for this user."
+            }
+        
+        await etsy_client.delete_listing_file(
+            str(shop_id),
+            str(listing_id),
+            str(listing_file_id)
+        )
+        
+        return {
+            "success": True,
+            "message": f"Successfully deleted file {listing_file_id} from listing {listing_id}"
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Error deleting listing file: {str(e)}"
+        }
+
+
+# Listing Video Management Tools
+
+@mcp.tool()
+async def get_listing_videos(listing_id: int) -> dict:
+    """
+    Get all videos for a listing.
+    
+    Args:
+        listing_id: The numeric ID of the listing
+    
+    Returns:
+        Dictionary containing:
+        - success: Whether the request was successful
+        - count: Number of videos
+        - results: Array of video objects
+    
+    Example:
+        - Get videos: get_listing_videos(listing_id=123456789)
+    """
+    if etsy_client is None:
+        return {
+            "success": False,
+            "error": "Not connected to Etsy. Please use connect_etsy tool first."
+        }
+    
+    try:
+        videos_data = await etsy_client.get_listing_videos(str(listing_id))
+        
+        return {
+            "success": True,
+            "count": videos_data.get("count", 0),
+            "results": videos_data.get("results", [])
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Error retrieving listing videos: {str(e)}"
+        }
+
+
+@mcp.tool()
+async def get_listing_video(
+    listing_id: int,
+    video_id: int
+) -> dict:
+    """
+    Get a single video from a listing.
+    
+    Args:
+        listing_id: The numeric ID of the listing
+        video_id: The numeric ID of the video
+    
+    Returns:
+        Dictionary containing:
+        - success: Whether the request was successful
+        - video: Video metadata object
+    
+    Example:
+        - Get video: get_listing_video(listing_id=123, video_id=456)
+    """
+    if etsy_client is None:
+        return {
+            "success": False,
+            "error": "Not connected to Etsy. Please use connect_etsy tool first."
+        }
+    
+    try:
+        video_data = await etsy_client.get_listing_video(
+            str(listing_id),
+            str(video_id)
+        )
+        
+        return {
+            "success": True,
+            "video": video_data
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Error retrieving listing video: {str(e)}"
+        }
+
+
+@mcp.tool()
+async def upload_listing_video(
+    listing_id: int,
+    video_path: str,
+    name: str = None
+) -> dict:
+    """
+    Upload a video to a listing.
+    
+    Args:
+        listing_id: The numeric ID of the listing
+        video_path: Path to the video file to upload
+        name: Optional name for the video
+    
+    Returns:
+        Dictionary containing:
+        - success: Whether upload was successful
+        - message: Confirmation message
+        - video: Uploaded video metadata
+    
+    Example:
+        - Upload video: upload_listing_video(listing_id=123, video_path="/path/to/video.mp4")
+    """
+    if etsy_client is None:
+        return {
+            "success": False,
+            "error": "Not connected to Etsy. Please use connect_etsy tool first."
+        }
+    
+    try:
+        from pathlib import Path
+        
+        # Validate video path
+        if not Path(video_path).exists():
+            return {
+                "success": False,
+                "error": f"Video file not found: {video_path}"
+            }
+        
+        user_data = await etsy_client.get_current_user()
+        shop_id = user_data.get("shop_id")
+        
+        if not shop_id:
+            return {
+                "success": False,
+                "error": "No shop_id found for this user."
+            }
+        
+        video_data = await etsy_client.upload_listing_video(
+            str(shop_id),
+            str(listing_id),
+            video_path=video_path,
+            name=name
+        )
+        
+        return {
+            "success": True,
+            "message": f"Successfully uploaded video to listing {listing_id}",
+            "video": video_data
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Error uploading listing video: {str(e)}"
+        }
+
+
+@mcp.tool()
+async def delete_listing_video(
+    listing_id: int,
+    video_id: int
+) -> dict:
+    """
+    Delete a video from a listing.
+    
+    Args:
+        listing_id: The numeric ID of the listing
+        video_id: The numeric ID of the video to delete
+    
+    Returns:
+        Dictionary containing:
+        - success: Whether deletion was successful
+        - message: Confirmation message
+    
+    Example:
+        - Delete video: delete_listing_video(listing_id=123, video_id=456)
+    """
+    if etsy_client is None:
+        return {
+            "success": False,
+            "error": "Not connected to Etsy. Please use connect_etsy tool first."
+        }
+    
+    try:
+        user_data = await etsy_client.get_current_user()
+        shop_id = user_data.get("shop_id")
+        
+        if not shop_id:
+            return {
+                "success": False,
+                "error": "No shop_id found for this user."
+            }
+        
+        await etsy_client.delete_listing_video(
+            str(shop_id),
+            str(listing_id),
+            str(video_id)
+        )
+        
+        return {
+            "success": True,
+            "message": f"Successfully deleted video {video_id} from listing {listing_id}"
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Error deleting listing video: {str(e)}"
+        }
+
+
+# Listing Translation Management Tools
+
+@mcp.tool()
+async def create_listing_translation(
+    listing_id: int,
+    language: str,
+    title: str,
+    description: str,
+    tags: list = None
+) -> dict:
+    """
+    Create a translation for a listing.
+    
+    Args:
+        listing_id: The numeric ID of the listing
+        language: IETF language tag (e.g., 'de', 'es', 'fr', 'it', 'ja', 'nl', 'pl', 'pt')
+        title: Translated listing title
+        description: Translated listing description
+        tags: Optional array of translated tag strings
+    
+    Returns:
+        Dictionary containing:
+        - success: Whether creation was successful
+        - message: Confirmation message
+        - translation: Created translation object
+    
+    Example:
+        - Create translation: create_listing_translation(listing_id=123, language="es", 
+                              title="Taza de cerámica", description="Hermosa taza artesanal")
+    """
+    if etsy_client is None:
+        return {
+            "success": False,
+            "error": "Not connected to Etsy. Please use connect_etsy tool first."
+        }
+    
+    try:
+        user_data = await etsy_client.get_current_user()
+        shop_id = user_data.get("shop_id")
+        
+        if not shop_id:
+            return {
+                "success": False,
+                "error": "No shop_id found for this user."
+            }
+        
+        translation_data = await etsy_client.create_listing_translation(
+            str(shop_id),
+            str(listing_id),
+            language=language,
+            title=title,
+            description=description,
+            tags=tags
+        )
+        
+        return {
+            "success": True,
+            "message": f"Successfully created {language} translation for listing {listing_id}",
+            "translation": translation_data
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Error creating listing translation: {str(e)}"
+        }
+
+
+@mcp.tool()
+async def get_listing_translation(
+    listing_id: int,
+    language: str
+) -> dict:
+    """
+    Get a translation for a listing.
+    
+    Args:
+        listing_id: The numeric ID of the listing
+        language: IETF language tag (e.g., 'de', 'es', 'fr', 'it', 'ja', 'nl', 'pl', 'pt')
+    
+    Returns:
+        Dictionary containing:
+        - success: Whether the request was successful
+        - translation: Translation object with title, description, tags
+    
+    Example:
+        - Get translation: get_listing_translation(listing_id=123, language="es")
+    """
+    if etsy_client is None:
+        return {
+            "success": False,
+            "error": "Not connected to Etsy. Please use connect_etsy tool first."
+        }
+    
+    try:
+        user_data = await etsy_client.get_current_user()
+        shop_id = user_data.get("shop_id")
+        
+        if not shop_id:
+            return {
+                "success": False,
+                "error": "No shop_id found for this user."
+            }
+        
+        translation_data = await etsy_client.get_listing_translation(
+            str(shop_id),
+            str(listing_id),
+            language=language
+        )
+        
+        return {
+            "success": True,
+            "translation": translation_data
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Error retrieving listing translation: {str(e)}"
+        }
+
+
+@mcp.tool()
+async def update_listing_translation(
+    listing_id: int,
+    language: str,
+    title: str,
+    description: str,
+    tags: list = None
+) -> dict:
+    """
+    Update a translation for a listing.
+    
+    Args:
+        listing_id: The numeric ID of the listing
+        language: IETF language tag (e.g., 'de', 'es', 'fr', 'it', 'ja', 'nl', 'pl', 'pt')
+        title: Translated listing title
+        description: Translated listing description
+        tags: Optional array of translated tag strings
+    
+    Returns:
+        Dictionary containing:
+        - success: Whether update was successful
+        - message: Confirmation message
+        - translation: Updated translation object
+    
+    Example:
+        - Update translation: update_listing_translation(listing_id=123, language="es",
+                              title="Taza de cerámica hecha a mano", description="...")
+    """
+    if etsy_client is None:
+        return {
+            "success": False,
+            "error": "Not connected to Etsy. Please use connect_etsy tool first."
+        }
+    
+    try:
+        user_data = await etsy_client.get_current_user()
+        shop_id = user_data.get("shop_id")
+        
+        if not shop_id:
+            return {
+                "success": False,
+                "error": "No shop_id found for this user."
+            }
+        
+        translation_data = await etsy_client.update_listing_translation(
+            str(shop_id),
+            str(listing_id),
+            language=language,
+            title=title,
+            description=description,
+            tags=tags
+        )
+        
+        return {
+            "success": True,
+            "message": f"Successfully updated {language} translation for listing {listing_id}",
+            "translation": translation_data
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Error updating listing translation: {str(e)}"
+        }
+
+
+# Taxonomy & Categories Tools
+
+@mcp.tool()
+async def get_buyer_taxonomy() -> dict:
+    """
+    Get the full buyer taxonomy tree (categories).
+    
+    Returns:
+        Dictionary containing:
+        - success: Whether the request was successful
+        - results: Array of taxonomy node objects
+    
+    Example:
+        - Get taxonomy: get_buyer_taxonomy()
+    """
+    if etsy_client is None:
+        return {
+            "success": False,
+            "error": "Not connected to Etsy. Please use connect_etsy tool first."
+        }
+    
+    try:
+        taxonomy_data = await etsy_client.get_buyer_taxonomy()
+        
+        return {
+            "success": True,
+            "results": taxonomy_data.get("results", [])
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Error retrieving buyer taxonomy: {str(e)}"
+        }
+
+
+@mcp.tool()
+async def get_buyer_taxonomy_properties(taxonomy_id: int) -> dict:
+    """
+    Get properties for a buyer taxonomy category.
+    
+    Args:
+        taxonomy_id: The numeric taxonomy ID
+    
+    Returns:
+        Dictionary containing:
+        - success: Whether the request was successful
+        - results: Array of property objects with scales and values
+    
+    Example:
+        - Get properties: get_buyer_taxonomy_properties(taxonomy_id=1429)
+    """
+    if etsy_client is None:
+        return {
+            "success": False,
+            "error": "Not connected to Etsy. Please use connect_etsy tool first."
+        }
+    
+    try:
+        properties_data = await etsy_client.get_buyer_taxonomy_properties(str(taxonomy_id))
+        
+        return {
+            "success": True,
+            "results": properties_data.get("results", [])
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Error retrieving buyer taxonomy properties: {str(e)}"
+        }
+
+
+@mcp.tool()
+async def get_seller_taxonomy() -> dict:
+    """
+    Get the full seller taxonomy tree (categories).
+    
+    Returns:
+        Dictionary containing:
+        - success: Whether the request was successful
+        - results: Array of taxonomy node objects
+    
+    Example:
+        - Get taxonomy: get_seller_taxonomy()
+    """
+    if etsy_client is None:
+        return {
+            "success": False,
+            "error": "Not connected to Etsy. Please use connect_etsy tool first."
+        }
+    
+    try:
+        taxonomy_data = await etsy_client.get_seller_taxonomy()
+        
+        return {
+            "success": True,
+            "results": taxonomy_data.get("results", [])
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Error retrieving seller taxonomy: {str(e)}"
+        }
+
+
+@mcp.tool()
+async def get_seller_taxonomy_properties(taxonomy_id: int) -> dict:
+    """
+    Get properties for a seller taxonomy category.
+    
+    Args:
+        taxonomy_id: The numeric taxonomy ID
+    
+    Returns:
+        Dictionary containing:
+        - success: Whether the request was successful
+        - results: Array of property objects with scales and values
+    
+    Example:
+        - Get properties: get_seller_taxonomy_properties(taxonomy_id=1429)
+    """
+    if etsy_client is None:
+        return {
+            "success": False,
+            "error": "Not connected to Etsy. Please use connect_etsy tool first."
+        }
+    
+    try:
+        properties_data = await etsy_client.get_seller_taxonomy_properties(str(taxonomy_id))
+        
+        return {
+            "success": True,
+            "results": properties_data.get("results", [])
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Error retrieving seller taxonomy properties: {str(e)}"
+        }
+
+
+# Featured Listings Tools
+
+@mcp.tool()
+async def get_featured_listings(
+    limit: int = 25,
+    offset: int = 0
+) -> dict:
+    """
+    Get featured listings for your shop.
+    
+    Args:
+        limit: Number of results to return (1-100). Default is 25.
+        offset: Offset for pagination. Default is 0.
+    
+    Returns:
+        Dictionary containing:
+        - success: Whether the request was successful
+        - count: Number of featured listings
+        - results: Array of listing objects
+    
+    Example:
+        - Get featured listings: get_featured_listings()
+    """
+    if etsy_client is None:
+        return {
+            "success": False,
+            "error": "Not connected to Etsy. Please use connect_etsy tool first."
+        }
+    
+    try:
+        user_data = await etsy_client.get_current_user()
+        shop_id = user_data.get("shop_id")
+        
+        if not shop_id:
+            return {
+                "success": False,
+                "error": "No shop_id found for this user."
+            }
+        
+        # Validate limit
+        if limit < 1 or limit > 100:
+            return {
+                "success": False,
+                "error": "Limit must be between 1 and 100."
+            }
+        
+        featured_data = await etsy_client.get_featured_listings(
+            str(shop_id),
+            limit=limit,
+            offset=offset
+        )
+        
+        return {
+            "success": True,
+            "count": featured_data.get("count", 0),
+            "results": featured_data.get("results", [])
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Error retrieving featured listings: {str(e)}"
+        }
+
+
+# Production Partners Tools
+
+@mcp.tool()
+async def get_production_partners() -> dict:
+    """
+    Get production partners for your shop.
+    
+    Returns:
+        Dictionary containing:
+        - success: Whether the request was successful
+        - count: Number of production partners
+        - results: Array of production partner objects
+    
+    Example:
+        - Get partners: get_production_partners()
+    """
+    if etsy_client is None:
+        return {
+            "success": False,
+            "error": "Not connected to Etsy. Please use connect_etsy tool first."
+        }
+    
+    try:
+        user_data = await etsy_client.get_current_user()
+        shop_id = user_data.get("shop_id")
+        
+        if not shop_id:
+            return {
+                "success": False,
+                "error": "No shop_id found for this user."
+            }
+        
+        partners_data = await etsy_client.get_production_partners(str(shop_id))
+        
+        return {
+            "success": True,
+            "count": partners_data.get("count", 0),
+            "results": partners_data.get("results", [])
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Error retrieving production partners: {str(e)}"
+        }
+
+
+# User Address Management Tools
+
+@mcp.tool()
+async def get_user_addresses(
+    limit: int = 25,
+    offset: int = 0
+) -> dict:
+    """
+    Get all user addresses.
+    
+    Args:
+        limit: Number of results to return (1-100). Default is 25.
+        offset: Offset for pagination. Default is 0.
+    
+    Returns:
+        Dictionary containing:
+        - success: Whether the request was successful
+        - count: Number of addresses
+        - results: Array of address objects
+    
+    Example:
+        - Get addresses: get_user_addresses()
+    """
+    if etsy_client is None:
+        return {
+            "success": False,
+            "error": "Not connected to Etsy. Please use connect_etsy tool first."
+        }
+    
+    try:
+        # Validate limit
+        if limit < 1 or limit > 100:
+            return {
+                "success": False,
+                "error": "Limit must be between 1 and 100."
+            }
+        
+        addresses_data = await etsy_client.get_user_addresses(
+            limit=limit,
+            offset=offset
+        )
+        
+        return {
+            "success": True,
+            "count": addresses_data.get("count", 0),
+            "results": addresses_data.get("results", [])
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Error retrieving user addresses: {str(e)}"
+        }
+
+
+@mcp.tool()
+async def get_user_address(user_address_id: int) -> dict:
+    """
+    Get a single user address by ID.
+    
+    Args:
+        user_address_id: The numeric ID of the address
+    
+    Returns:
+        Dictionary containing:
+        - success: Whether the request was successful
+        - address: Address object with details
+    
+    Example:
+        - Get address: get_user_address(user_address_id=123)
+    """
+    if etsy_client is None:
+        return {
+            "success": False,
+            "error": "Not connected to Etsy. Please use connect_etsy tool first."
+        }
+    
+    try:
+        address_data = await etsy_client.get_user_address(str(user_address_id))
+        
+        return {
+            "success": True,
+            "address": address_data
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Error retrieving user address: {str(e)}"
+        }
+
+
+@mcp.tool()
+async def delete_user_address(user_address_id: int) -> dict:
+    """
+    Delete a user address.
+    
+    Args:
+        user_address_id: The numeric ID of the address to delete
+    
+    Returns:
+        Dictionary containing:
+        - success: Whether deletion was successful
+        - message: Confirmation message
+    
+    Example:
+        - Delete address: delete_user_address(user_address_id=123)
+    """
+    if etsy_client is None:
+        return {
+            "success": False,
+            "error": "Not connected to Etsy. Please use connect_etsy tool first."
+        }
+    
+    try:
+        await etsy_client.delete_user_address(str(user_address_id))
+        
+        return {
+            "success": True,
+            "message": f"Successfully deleted user address {user_address_id}"
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Error deleting user address: {str(e)}"
+        }
+
+
 if __name__ == "__main__":
     # Run the MCP server
     mcp.run()
