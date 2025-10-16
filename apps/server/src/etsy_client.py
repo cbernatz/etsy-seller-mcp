@@ -2165,7 +2165,14 @@ class EtsyClient:
             payload["readiness_state_on_property"] = readiness_state_on_property
         
         response = await self.async_client.put(url, headers=headers, json=payload)
-        response.raise_for_status()
+        if response.status_code >= 400:
+            # Try to get error details from response body
+            try:
+                error_data = response.json()
+                error_msg = f"Etsy API error: {error_data}"
+            except:
+                error_msg = f"HTTP {response.status_code}: {response.text}"
+            raise Exception(error_msg)
         return response.json()
     
     # Listing File Methods (Digital Products)

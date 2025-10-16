@@ -659,26 +659,43 @@ async def update_my_listing(
     state: str = None,
     title: str = None,
     description: str = None,
-    price: float = None,
-    quantity: int = None,
     tags: list = None,
     materials: list = None,
-    shop_section_id: int = None
+    shop_section_id: int = None,
+    shipping_profile_id: int = None,
+    return_policy_id: int = None,
+    taxonomy_id: int = None,
+    who_made: str = None,
+    when_made: str = None,
+    is_taxable: bool = None,
+    is_supply: bool = None,
+    is_personalizable: bool = None,
+    featured_rank: int = None
 ) -> dict:
     """
-    Update a listing in your Etsy shop. You can update various properties including
-    the listing state (to activate, deactivate, or set to draft) and assign it to a shop section.
+    Update a listing's properties in your Etsy shop. You can update the listing state,
+    title, description, and other metadata.
+    
+    IMPORTANT: This tool CANNOT update price or quantity. To update pricing or stock
+    quantities, you MUST use the update_listing_inventory tool instead.
     
     Args:
         listing_id: The unique identifier of the listing to update
         state: Listing state. Options: 'active', 'inactive', 'draft'
         title: New listing title
         description: New listing description
-        price: New price (in dollars, e.g., 5.50 for $5.50)
-        quantity: New quantity available
         tags: List of tags for the listing
         materials: List of materials used in the product
         shop_section_id: ID of the shop section to assign this listing to
+        shipping_profile_id: ID of the shipping profile
+        return_policy_id: ID of the return policy
+        taxonomy_id: Category ID
+        who_made: Who made the product ('i_did', 'someone_else', 'collective')
+        when_made: When the product was made
+        is_taxable: Whether shop tax rates apply
+        is_supply: Whether this is a craft supply
+        is_personalizable: Whether the listing supports personalization
+        featured_rank: Position in featured listings
     
     Returns:
         Dictionary containing:
@@ -722,13 +739,6 @@ async def update_my_listing(
         if description is not None:
             update_params['description'] = description
         
-        if price is not None:
-            # Convert price to Etsy's format (amount in cents)
-            update_params['price'] = price
-        
-        if quantity is not None:
-            update_params['quantity'] = quantity
-        
         if tags is not None:
             update_params['tags'] = tags
         
@@ -737,6 +747,33 @@ async def update_my_listing(
         
         if shop_section_id is not None:
             update_params['shop_section_id'] = shop_section_id
+        
+        if shipping_profile_id is not None:
+            update_params['shipping_profile_id'] = shipping_profile_id
+        
+        if return_policy_id is not None:
+            update_params['return_policy_id'] = return_policy_id
+        
+        if taxonomy_id is not None:
+            update_params['taxonomy_id'] = taxonomy_id
+        
+        if who_made is not None:
+            update_params['who_made'] = who_made
+        
+        if when_made is not None:
+            update_params['when_made'] = when_made
+        
+        if is_taxable is not None:
+            update_params['is_taxable'] = is_taxable
+        
+        if is_supply is not None:
+            update_params['is_supply'] = is_supply
+        
+        if is_personalizable is not None:
+            update_params['is_personalizable'] = is_personalizable
+        
+        if featured_rank is not None:
+            update_params['featured_rank'] = featured_rank
         
         if not update_params:
             return {
@@ -1089,80 +1126,44 @@ async def delete_my_listing(listing_id: int) -> dict:
 
 
 @mcp.tool()
-async def get_shop_sections() -> dict:
+async def shop_sections(
+    action: str,
+    shop_section_id: int = None,
+    title: str = None
+) -> dict:
     """
-    Get all shop sections from your Etsy shop.
+    Consolidated shop sections management tool.
     
     Shop sections organize listings displayed in an Etsy shop. Each section has a 
     title and can contain multiple listings.
     
-    Returns:
-        Dictionary containing:
-        - success: Whether the request was successful
-        - count: Number of sections
-        - results: Array of section objects with details like:
-          - shop_section_id: Unique section identifier
-          - title: Section title
-          - rank: Display order
-          - active_listing_count: Number of active listings in the section
-    
-    Example:
-        - Get all sections: get_shop_sections()
-    """
-    if etsy_client is None:
-        return {
-            "success": False,
-            "error": "Not connected to Etsy. Please use connect_etsy tool first."
-        }
-    
-    try:
-        user_data = await etsy_client.get_current_user()
-        shop_id = user_data.get("shop_id")
-        
-        if not shop_id:
-            return {
-                "success": False,
-                "error": "No shop_id found for this user."
-            }
-        
-        sections_data = await etsy_client.get_shop_sections(str(shop_id))
-        
-        return {
-            "success": True,
-            "count": sections_data.get("count", 0),
-            "results": sections_data.get("results", [])
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": f"Error retrieving shop sections: {str(e)}"
-        }
-
-
-@mcp.tool()
-async def get_shop_section(shop_section_id: int) -> dict:
-    """
-    Get a single shop section by its ID.
-    
     Args:
-        shop_section_id: The numeric ID of the section
+        action: One of 'list', 'get', 'create', 'update', 'delete'
+        shop_section_id: The numeric ID of the section (required for 'get', 'update', 'delete')
+        title: The title string for the section (required for 'create', 'update')
     
     Returns:
-        Dictionary containing:
-        - success: Whether the request was successful
-        - section: Section object with details including:
-          - shop_section_id: Unique section identifier
-          - title: Section title
-          - rank: Display order
-          - active_listing_count: Number of active listings in the section
-    
-    Example:
-        - Get section details: get_shop_section(shop_section_id=12345)
+        Result dictionary matching the specific action.
+        
+    Examples:
+        - List all sections: shop_sections(action="list")
+        - Get specific section: shop_sections(action="get", shop_section_id=12345)
+        - Create section: shop_sections(action="create", title="Handmade Pottery")
+        - Update section: shop_sections(action="update", shop_section_id=12345, title="Ceramic Art")
+        - Delete section: shop_sections(action="delete", shop_section_id=12345)
     """
     if etsy_client is None:
         return {
             "success": False,
             "error": "Not connected to Etsy. Please use connect_etsy tool first."
+        }
+    
+    # Normalize action
+    normalized = (action or "").strip().lower()
+    if normalized not in {"list", "get", "create", "update", "delete"}:
+        return {
+            "success": False,
+            "error": "Invalid action. Use one of: list, get, create, update, delete."
         }
     
     try:
@@ -1175,176 +1176,83 @@ async def get_shop_section(shop_section_id: int) -> dict:
                 "error": "No shop_id found for this user."
             }
         
-        section_data = await etsy_client.get_shop_section(str(shop_id), str(shop_section_id))
-        
-        return {
-            "success": True,
-            "section": section_data
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": f"Error retrieving shop section: {str(e)}"
-        }
-
-
-@mcp.tool()
-async def create_shop_section(title: str) -> dict:
-    """
-    Create a new section in your Etsy shop.
-    
-    Shop sections organize listings displayed in an Etsy shop. After creating a section,
-    you can assign listings to it using the update_my_listing tool with the shop_section_id parameter.
-    
-    Args:
-        title: The title string for the new shop section
-    
-    Returns:
-        Dictionary containing:
-        - success: Whether the creation was successful
-        - message: Confirmation message
-        - section: Created section object with:
-          - shop_section_id: Unique section identifier (use this to assign listings)
-          - title: Section title
-          - rank: Display order
-          - active_listing_count: Number of active listings (will be 0 for new sections)
-    
-    Example:
-        - Create a section: create_shop_section(title="Handmade Pottery")
-    """
-    if etsy_client is None:
-        return {
-            "success": False,
-            "error": "Not connected to Etsy. Please use connect_etsy tool first."
-        }
-    
-    try:
-        user_data = await etsy_client.get_current_user()
-        shop_id = user_data.get("shop_id")
-        
-        if not shop_id:
+        # LIST action
+        if normalized == "list":
+            sections_data = await etsy_client.get_shop_sections(str(shop_id))
             return {
-                "success": False,
-                "error": "No shop_id found for this user."
+                "success": True,
+                "count": sections_data.get("count", 0),
+                "results": sections_data.get("results", [])
             }
         
-        section_data = await etsy_client.create_shop_section(str(shop_id), title)
-        
-        return {
-            "success": True,
-            "message": f"Successfully created shop section '{title}'",
-            "section": section_data
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": f"Error creating shop section: {str(e)}"
-        }
-
-
-@mcp.tool()
-async def update_shop_section(shop_section_id: int, title: str) -> dict:
-    """
-    Update a section in your Etsy shop.
-    
-    Args:
-        shop_section_id: The numeric ID of the section to update
-        title: The new title string for the shop section
-    
-    Returns:
-        Dictionary containing:
-        - success: Whether the update was successful
-        - message: Confirmation message
-        - section: Updated section object with:
-          - shop_section_id: Unique section identifier
-          - title: Updated section title
-          - rank: Display order
-          - active_listing_count: Number of active listings in the section
-    
-    Example:
-        - Update a section: update_shop_section(shop_section_id=12345, title="Ceramic Art")
-    """
-    if etsy_client is None:
-        return {
-            "success": False,
-            "error": "Not connected to Etsy. Please use connect_etsy tool first."
-        }
-    
-    try:
-        user_data = await etsy_client.get_current_user()
-        shop_id = user_data.get("shop_id")
-        
-        if not shop_id:
+        # GET action
+        if normalized == "get":
+            if shop_section_id is None:
+                return {
+                    "success": False,
+                    "error": "shop_section_id is required for 'get' action."
+                }
+            section_data = await etsy_client.get_shop_section(str(shop_id), str(shop_section_id))
             return {
-                "success": False,
-                "error": "No shop_id found for this user."
+                "success": True,
+                "section": section_data
             }
         
-        section_data = await etsy_client.update_shop_section(
-            str(shop_id), 
-            str(shop_section_id), 
-            title
-        )
-        
-        return {
-            "success": True,
-            "message": f"Successfully updated shop section {shop_section_id}",
-            "section": section_data
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": f"Error updating shop section: {str(e)}"
-        }
-
-
-@mcp.tool()
-async def delete_shop_section(shop_section_id: int) -> dict:
-    """
-    Delete a section from your Etsy shop.
-    
-    This will delete the section but will NOT delete the listings in that section.
-    Listings will simply no longer be organized in that section.
-    
-    Args:
-        shop_section_id: The numeric ID of the section to delete
-    
-    Returns:
-        Dictionary containing:
-        - success: Whether the deletion was successful
-        - message: Confirmation message
-        - shop_section_id: ID of the deleted section
-    
-    Example:
-        - Delete a section: delete_shop_section(shop_section_id=12345)
-    """
-    if etsy_client is None:
-        return {
-            "success": False,
-            "error": "Not connected to Etsy. Please use connect_etsy tool first."
-        }
-    
-    try:
-        user_data = await etsy_client.get_current_user()
-        shop_id = user_data.get("shop_id")
-        
-        if not shop_id:
+        # CREATE action
+        if normalized == "create":
+            if not title:
+                return {
+                    "success": False,
+                    "error": "title is required for 'create' action."
+                }
+            section_data = await etsy_client.create_shop_section(str(shop_id), title)
             return {
-                "success": False,
-                "error": "No shop_id found for this user."
+                "success": True,
+                "message": f"Successfully created shop section '{title}'",
+                "section": section_data
             }
         
-        result = await etsy_client.delete_shop_section(str(shop_id), str(shop_section_id))
+        # UPDATE action
+        if normalized == "update":
+            if shop_section_id is None:
+                return {
+                    "success": False,
+                    "error": "shop_section_id is required for 'update' action."
+                }
+            if not title:
+                return {
+                    "success": False,
+                    "error": "title is required for 'update' action."
+                }
+            section_data = await etsy_client.update_shop_section(
+                str(shop_id), 
+                str(shop_section_id), 
+                title
+            )
+            return {
+                "success": True,
+                "message": f"Successfully updated shop section {shop_section_id}",
+                "section": section_data
+            }
         
-        return {
-            "success": True,
-            "message": f"Successfully deleted shop section {shop_section_id}",
-            "shop_section_id": shop_section_id
-        }
+        # DELETE action
+        if normalized == "delete":
+            if shop_section_id is None:
+                return {
+                    "success": False,
+                    "error": "shop_section_id is required for 'delete' action."
+                }
+            await etsy_client.delete_shop_section(str(shop_id), str(shop_section_id))
+            return {
+                "success": True,
+                "message": f"Successfully deleted shop section {shop_section_id}",
+                "shop_section_id": shop_section_id
+            }
+    
     except Exception as e:
         return {
             "success": False,
-            "error": f"Error deleting shop section: {str(e)}"
+            "error": f"Error with shop sections {normalized} operation: {str(e)}"
         }
 
 
@@ -4041,10 +3949,19 @@ async def update_listing_inventory(
     sku_on_property: list = None
 ) -> dict:
     """
-    Update inventory for a listing (quantities, prices, SKUs for variants).
+    Update inventory for a listing including PRICES, QUANTITIES, and SKUs.
+    
+    ⚠️ IMPORTANT: This is the ONLY way to update prices or quantities for a listing.
+    The update_my_listing tool CANNOT change prices or quantities.
     
     This is a complex operation that updates the entire inventory structure.
     The products array must include all products/variants for the listing.
+    
+    When to use this tool:
+    - Changing the price of a listing
+    - Updating stock quantities
+    - Modifying SKUs
+    - Managing variant-specific pricing or quantities
     
     Args:
         listing_id: The numeric ID of the listing
@@ -4060,18 +3977,22 @@ async def update_listing_inventory(
         - inventory: Updated inventory object
     
     Example:
-        - Update single product inventory: update_listing_inventory(
+        - Update price to $25: First get inventory with get_listing_inventory,
+          then update_listing_inventory(
             listing_id=123,
             products=[{
-                "product_id": 1,
+                "property_values": [],
                 "offerings": [{
-                    "offering_id": 1,
                     "price": 25.00,
                     "quantity": 10,
-                    "is_enabled": True
+                    "is_enabled": true,
+                    "readiness_state_id": 1406027066350
                 }]
             }]
           )
+        
+        Note: Each offering REQUIRES: price, quantity, is_enabled, and readiness_state_id
+              DO NOT include product_id, offering_id, or sku - these are READ-ONLY
     """
     if etsy_client is None:
         return {
