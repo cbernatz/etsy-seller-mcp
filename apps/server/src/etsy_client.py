@@ -273,7 +273,18 @@ class EtsyClient:
             "Content-Type": "application/x-www-form-urlencoded",
         }
         
-        response = await self.async_client.patch(url, headers=headers, data=data)
+        # Manually encode arrays for form-urlencoded format
+        # For Etsy API, arrays like tags and materials should be sent as comma-separated strings
+        encoded_data = {}
+        for key, value in data.items():
+            if isinstance(value, list):
+                # Join array items with commas for form-urlencoded format
+                encoded_data[key] = ','.join(str(item) for item in value)
+            else:
+                encoded_data[key] = value
+        
+        # Send as form-urlencoded data
+        response = await self.async_client.patch(url, headers=headers, data=encoded_data)
         response.raise_for_status()
         return response.json()
 
