@@ -758,6 +758,9 @@ async def update_my_listing(
     is_taxable: bool = None,
     is_supply: bool = None,
     is_personalizable: bool = None,
+    personalization_is_required: bool = None,
+    personalization_char_count_max: int = None,
+    personalization_instructions: str = None,
     featured_rank: int = None
 ) -> dict:
     """
@@ -783,6 +786,9 @@ async def update_my_listing(
         is_taxable: Whether shop tax rates apply
         is_supply: Whether this is a craft supply
         is_personalizable: Whether the listing supports personalization
+        personalization_is_required: Whether personalization is required (only if is_personalizable is true)
+        personalization_char_count_max: Max characters for personalization message (only if is_personalizable is true)
+        personalization_instructions: Instructions for buyer personalization (only if is_personalizable is true)
         featured_rank: Position in featured listings
     
     Returns:
@@ -859,6 +865,21 @@ async def update_my_listing(
         
         if is_personalizable is not None:
             update_params['is_personalizable'] = is_personalizable
+        
+        if personalization_is_required is not None:
+            update_params['personalization_is_required'] = personalization_is_required
+        
+        if personalization_char_count_max is not None:
+            # Validate max character count doesn't exceed Etsy's limit
+            if personalization_char_count_max > 1024:
+                return {
+                    "success": False,
+                    "error": f"personalization_char_count_max cannot exceed 1024. Provided: {personalization_char_count_max}"
+                }
+            update_params['personalization_char_count_max'] = personalization_char_count_max
+        
+        if personalization_instructions is not None:
+            update_params['personalization_instructions'] = personalization_instructions
         
         if featured_rank is not None:
             update_params['featured_rank'] = featured_rank
