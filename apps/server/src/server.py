@@ -189,8 +189,17 @@ async def restore_session_from_keyring() -> bool:
     return False
 
 
-# Try to restore session on startup
-asyncio.run(restore_session_from_keyring())
+def _schedule_session_restore() -> None:
+    """Restore session safely without breaking environments with a running loop.
+
+    - If a loop is already running (e.g., FastMCP Cloud), schedule as a task.
+    - If no loop is running yet (local dev), run synchronously.
+    """
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(restore_session_from_keyring())
+    except RuntimeError:
+        asyncio.run(restore_session_from_keyring())
 
 
 async def connect_etsy() -> dict:
@@ -5089,5 +5098,6 @@ async def delete_user_address(user_address_id: int) -> dict:
 
 if __name__ == "__main__":
     # Run the MCP server
+    _schedule_session_restore()
     mcp.run()
 
