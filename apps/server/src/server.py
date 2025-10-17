@@ -7,7 +7,7 @@ import webbrowser
 import keyring
 import json
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 
 # Add the src directory to the path so imports work
@@ -55,14 +55,27 @@ def save_token_to_keyring(access_token: str, expires_at: str, refresh_token: str
     try:
         # Store the access token
         keyring.set_password(KEYRING_SERVICE, KEYRING_TOKEN_KEY, access_token)
-        
-        # Store metadata (expiration time)
-        metadata = json.dumps({"expires_at": expires_at})
-        keyring.set_password(KEYRING_SERVICE, KEYRING_METADATA_KEY, metadata)
+
+        # Merge with existing metadata to preserve fields like refresh_issued_at
+        existing_metadata: dict = {}
+        try:
+            existing_json = keyring.get_password(KEYRING_SERVICE, KEYRING_METADATA_KEY)
+            if existing_json:
+                existing_metadata = json.loads(existing_json)
+        except Exception:
+            existing_metadata = {}
+
+        # Update/overwrite expiry and optionally record when the refresh token was issued/rotated
+        existing_metadata["expires_at"] = expires_at
+        if refresh_token:
+            existing_metadata["refresh_issued_at"] = datetime.utcnow().isoformat()
+
+        keyring.set_password(KEYRING_SERVICE, KEYRING_METADATA_KEY, json.dumps(existing_metadata))
+
         # Store refresh token if available
         if refresh_token:
             keyring.set_password(KEYRING_SERVICE, KEYRING_REFRESH_TOKEN_KEY, refresh_token)
-        
+
         print(f"✓ Token saved to system keyring")
     except Exception as e:
         print(f"Warning: Could not save token to keyring: {e}")
@@ -88,6 +101,7 @@ def load_token_from_keyring() -> Optional[Dict[str, Any]]:
         
         metadata = json.loads(metadata_json)
         expires_at = metadata.get("expires_at")
+        refresh_issued_at = metadata.get("refresh_issued_at")
         refresh_token = keyring.get_password(KEYRING_SERVICE, KEYRING_REFRESH_TOKEN_KEY)
         
         # Check if token is expired
@@ -102,6 +116,7 @@ def load_token_from_keyring() -> Optional[Dict[str, Any]]:
             "access_token": access_token,
             "expires_at": expires_at,
             "refresh_token": refresh_token,
+            "refresh_issued_at": refresh_issued_at,
         }
     except Exception as e:
         print(f"Warning: Could not load token from keyring: {e}")
@@ -331,10 +346,74 @@ async def get_connection_status() -> dict:
     Returns:
         Dictionary containing connection status
     """
+    in_memory_connected = etsy_client is not None
+    # Inspect keyring without modifying or refreshing
+    access_token = None
+    refresh_token = None
+    expires_at: str | None = None
+    is_expired: bool | None = None
+    seconds_until_expiry: int | None = None
+    refresh_issued_at: str | None = None
+    refresh_expires_at: str | None = None
+    seconds_until_refresh_expiry: int | None = None
+    try:
+        access_token = keyring.get_password(KEYRING_SERVICE, KEYRING_TOKEN_KEY)
+    except Exception:
+        access_token = None
+    try:
+        refresh_token = keyring.get_password(KEYRING_SERVICE, KEYRING_REFRESH_TOKEN_KEY)
+    except Exception:
+        refresh_token = None
+    try:
+        metadata_json = keyring.get_password(KEYRING_SERVICE, KEYRING_METADATA_KEY)
+        if metadata_json:
+            meta = json.loads(metadata_json)
+            expires_at = meta.get("expires_at")
+            refresh_issued_at = meta.get("refresh_issued_at")
+            if expires_at:
+                try:
+                    expiry_dt = datetime.fromisoformat(expires_at)
+                    delta = (expiry_dt - datetime.utcnow())
+                    seconds_until_expiry = int(delta.total_seconds())
+                    is_expired = seconds_until_expiry <= 0
+                except Exception:
+                    # If parsing fails, leave expiry unknown
+                    is_expired = None
+                    seconds_until_expiry = None
+            if refresh_issued_at:
+                try:
+                    issued_dt = datetime.fromisoformat(refresh_issued_at)
+                    refresh_expiry_dt = issued_dt + timedelta(days=90)
+                    refresh_expires_at = refresh_expiry_dt.isoformat()
+                    seconds_until_refresh_expiry = int((refresh_expiry_dt - datetime.utcnow()).total_seconds())
+                except Exception:
+                    refresh_expires_at = None
+                    seconds_until_refresh_expiry = None
+    except Exception:
+        pass
+
+    keyring_connected = bool(access_token) and (is_expired is not True)
+    connected = in_memory_connected or keyring_connected
+
+    message = (
+        "Connected to Etsy" if connected else "Not connected. Use auth(action=\"connect\") to authenticate."
+    )
+
     return {
         "success": True,
-        "connected": etsy_client is not None,
-        "message": "Connected to Etsy" if etsy_client else "Not connected. Use connect_etsy to authenticate."
+        "connected": connected,
+        "in_memory": in_memory_connected,
+        "keyring": {
+            "access_token_present": bool(access_token),
+            "refresh_token_present": bool(refresh_token),
+            "expires_at": expires_at,
+            "is_expired": is_expired,
+            "seconds_until_expiry": seconds_until_expiry,
+            "refresh_issued_at": refresh_issued_at,
+            "refresh_expires_at": refresh_expires_at,
+            "seconds_until_refresh_expiry": seconds_until_refresh_expiry,
+        },
+        "message": message,
     }
 
 
